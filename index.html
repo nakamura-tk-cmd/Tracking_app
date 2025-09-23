@@ -5,42 +5,84 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>動画解析ツール</title>
     <link rel="stylesheet" href="css/style.css">
-    </head>
+</head>
 <body>
 
     <h1>動画解析ツール</h1>
 
-    <p>解析したい動画ファイルを選択してください:</p>
-    <input type="file" id="video-input" accept="video/*">
+    <details class="manual">
+        <summary>【クリックで開閉】簡単な使い方</summary>
+        <ol>
+            <li><strong>動画を読み込み:</strong> 「ファイルを選択」で動画を開きます。</li>
+            <li><strong>物体数を設定:</strong> 「追跡する物体の数」を選びます。</li>
+            <li><strong>スケールを設定:</strong> 「📏 スケール設定」を押し、長さが分かっている物体の両端をクリック後、距離[m]を入力します。</li>
+            <li><strong>計測を開始:</strong> 計測したい「物体タブ」を選び、動画を一時停止し、物体をクリックします。(記録すると自動でコマが進みます)</li>
+            <li><strong>データを出力:</strong> 計測完了後、「CSVダウンロード」でデータを保存します。</li>
+        </ol>
+    </details>
+
+    <div class="panel">
+        <h3>1. 準備</h3>
+        <p>解析したい動画ファイルを選択してください:</p>
+        <input type="file" id="video-input" accept="video/*">
+        <div id="video-info-panel" class="hidden">
+            <h4>動画情報</h4>
+            <p id="video-resolution"></p>
+            <p id="video-size"></p>
+            <p id="fps-display"></p>
+            <p id="video-warning" class="warning-text"></p>
+        </div>
+    </div>
+
     <hr>
-    
+
     <div id="video-container">
-        <video id="video-player" controls></video>
+        <video id="video-player" disablepictureinpicture></video>
+        <div id="event-shield"></div>
         <div id="debug-overlay"></div>
         <svg id="scale-overlay"></svg>
     </div>
-    <div class="controls">
-        <div class="interval-control">
-            <label for="interval-input">クリック時に進むフレーム数:</label>
-            <input type="number" id="interval-input" value="1" min="1">
-        </div>
-        <div class="playback-buttons">
-            <button id="set-scale-btn" title="スケール設定">📏 スケール設定</button>
-            <button id="frame-back-btn" title="1フレーム戻る">⏪</button>
-            <button id="play-pause-btn" title="再生/一時停止">▶</button>
-            <button id="frame-forward-btn" title="1フレーム進む">⏩</button>
-        </div>
-    </div>
+    
     <div class="info-display">
         <span id="time-display">時間: 0.000 s / フレーム: 0</span>
         <span id="scale-display">スケール: 未設定</span>
     </div>
-    <hr>
-    <div class="mode-control">
-        <strong>データ記録モード:</strong>
-        <label><input type="radio" name="data-mode" value="overwrite" checked> 同じ時刻は上書きする</label>
-        <label><input type="radio" name="data-mode" value="keep-all"> 全ての記録を残す</label>
+
+    <div class="panel main-controls">
+        <button id="rewind-btn" title="はじめに戻る">⏮</button>
+        <button id="frame-back-btn" title="1フレーム戻る">⏪</button>
+        <input type="range" id="seek-bar" value="0" step="any">
+        <button id="play-pause-btn" title="再生/一時停止">▶</button>
+        <button id="frame-forward-btn" title="1フレーム進む">⏩</button>
     </div>
+    <div class="panel settings-panel">
+        <div class="settings-group">
+            <button id="set-origin-btn" title="原点設定">⌖ 原点設定</button>
+            <button id="set-scale-btn" title="スケール設定">📏 スケール設定</button>
+        </div>
+        <div class="settings-group interval-control">
+            <label for="interval-input">クリック時に進むフレーム数:</label>
+            <input type="number" id="interval-input" value="1" min="1">
+        </div>
+        <div class="settings-group object-count-selector">
+            <label for="object-count">追跡する物体の数:</label>
+            <select id="object-count">
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+            </select>
+        </div>
+        <div id="object-tabs" class="settings-group"></div>
+        <div class="settings-group mode-control">
+            <strong>記録モード:</strong>
+            <label><input type="radio" name="data-mode" value="overwrite" checked> 上書き</label>
+            <label><input type="radio" name="data-mode" value="keep-all"> 全て残す</label>
+        </div>
+    </div>
+
+    <hr>
+    
     <div class="data-header">
       <h2>記録データ</h2>
       <div class="data-buttons">
@@ -49,17 +91,10 @@
       </div>
     </div>
     <table border="1" id="data-table">
-        <thead>
-            <tr>
-                <th>時間 (s)</th>
-                <th>X座標 (m)</th>
-                <th>Y座標 (m)</th>
-                <th>操作</th> 
-            </tr>
-        </thead>
-        <tbody id="data-table-body">
-        </tbody>
+        <thead id="data-table-head"></thead>
+        <tbody id="data-table-body"></tbody>
     </table>
+
     <script src="src/script.js"></script>
 
 </body>
