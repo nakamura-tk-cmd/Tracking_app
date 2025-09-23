@@ -5,19 +5,23 @@ document.addEventListener('DOMContentLoaded', function() {
     // ========= 関数定義 =========
 
     /**
-     * ▼▼▼ updateFpsDisplay関数内のテキスト表示を最終調整 ▼▼▼
+     * ▼▼▼ applyZoomPan関数を修正 ▼▼▼
+     * ズーム・パン時にスケール設定用の点も再描画する処理を追加
      */
-    function updateFpsDisplay() { 
-        if (measuredFps) { 
-            const timePerFrame = 1 / measuredFps; 
-            const framesInPointOneSec = 0.1 / timePerFrame; 
-            // スペースを調整
-            fpsDisplay.textContent = `(実測fps: ${measuredFps.toFixed(1)}    ,    1フレーム: ${timePerFrame.toFixed(3)}s    ,    0.1s≈${framesInPointOneSec.toFixed(1)}フレーム)`; 
-        } else { 
-            fpsDisplay.textContent = ' (fps計測失敗)'; 
-        } 
+    function applyZoomPan() {
+        // 1. 動画のtransformを更新
+        videoPlayer.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+        
+        // 2. デバッグ表示を更新
+        updateDebugOverlay();
+
+        // 3. ★★★ここが重要★★★
+        // スケール設定中に描画した要素を、現在のズーム・パンに合わせて再描画する
+        clearScaleOverlay(); // まず現在の描画を全て消去
+        // 配列に保存されている点を、新しいズーム率と位置で再描画
+        scalePoints.forEach(point => drawScalePoint(point));
     }
-    
+
     // (以下、ファイル全体の完全なコードです)
     const FRAME_RATE = 30; const DRAG_THRESHOLD = 5; let trackingData = []; let scale = 1.0, translateX = 0, translateY = 0, isDragging = false, lastMouseX = 0, lastMouseY = 0; let hasDragged = false, startMouseX = 0, startMouseY = 0; let isUpdateMode = false; let updateIndex = null; let dataMode = 'overwrite'; let scaleRatio = null; let isScalingMode = false; let scalePoints = []; let objectCount = 1; let activeObjectId = 1; const OBJECT_COLORS = ['#ff6384', '#36a2eb', '#ffce56', '#4bc0c0']; let origin = { x: 0, y: 0 }; let isOriginMode = false; let currentFile = null; let measuredFps = null;
     const fileInput = document.getElementById('video-input'); const videoPlayer = document.getElementById('video-player'); const playPauseBtn = document.getElementById('play-pause-btn'); const frameBackBtn = document.getElementById('frame-back-btn'); const frameForwardBtn = document.getElementById('frame-forward-btn'); const timeDisplay = document.getElementById('time-display'); const dataTableBody = document.getElementById('data-table-body'); const dataTableHead = document.getElementById('data-table-head'); const videoContainer = document.getElementById('video-container'); const eventShield = document.getElementById('event-shield'); const debugOverlay = document.getElementById('debug-overlay'); const intervalInput = document.getElementById('interval-input'); const downloadCsvBtn = document.getElementById('download-csv-btn'); const clearDataBtn = document.getElementById('clear-data-btn'); const dataModeRadios = document.querySelectorAll('input[name="data-mode"]'); const setScaleBtn = document.getElementById('set-scale-btn'); const scaleDisplay = document.getElementById('scale-display'); const scaleOverlay = document.getElementById('scale-overlay'); const seekBar = document.getElementById('seek-bar'); const objectCountSelector = document.getElementById('object-count'); const objectTabsContainer = document.getElementById('object-tabs'); const videoInfoPanel = document.getElementById('video-info-panel'); const videoResolution = document.getElementById('video-resolution'); const videoSize = document.getElementById('video-size'); const videoWarning = document.getElementById('video-warning'); const setOriginBtn = document.getElementById('set-origin-btn'); const fpsDisplay = document.getElementById('fps-display'); const rewindBtn = document.getElementById('rewind-btn');
@@ -44,7 +48,6 @@ document.addEventListener('DOMContentLoaded', function() {
     dataTableBody.addEventListener('click', function(event) { const target = event.target.closest('button'); if (!target) return; if (target.classList.contains('cell-delete-btn')) { const timeToDelete = parseFloat(target.dataset.time); const idToDelete = parseInt(target.dataset.id, 10); const indexToDelete = trackingData.findIndex(p => p.t === timeToDelete && p.id === idToDelete); if (indexToDelete !== -1) { if (confirm(`時刻 ${timeToDelete.toFixed(3)}s の 物体${idToDelete} のデータを削除しますか？`)) { trackingData.splice(indexToDelete, 1); updateDataTable(); } } } if (target.classList.contains('cell-remeasure-btn')) { const timeToUpdate = parseFloat(target.dataset.time); const idToUpdate = parseInt(target.dataset.id, 10); const indexToUpdate = trackingData.findIndex(p => p.t === timeToUpdate && p.id === idToUpdate); if (indexToUpdate === -1) return; const pointToUpdate = trackingData[indexToUpdate]; isUpdateMode = true; updateIndex = indexToUpdate; videoPlayer.currentTime = pointToUpdate.t; videoPlayer.pause(); playPauseBtn.textContent = '▶'; activeObjectId = pointToUpdate.id; updateObjectTabs(); updateDataTable(); alert(`再計測モード：物体ID ${pointToUpdate.id}（${pointToUpdate.t.toFixed(3)}秒）\n動画上の正しい位置をクリックしてください。`); } });
     
     // ========= 関数定義 =========
-    function applyZoomPan() {videoPlayer.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;updateDebugOverlay();scalePoints.forEach(point => drawScalePoint(point));}
     function resetZoomPan() {scale = 1;translateX = 0;translateY = 0;applyZoomPan();clearScaleOverlay();}
     function updateDebugOverlay() {debugOverlay.textContent = `Scale: ${scale.toFixed(2)}, Translate: (${translateX.toFixed(0)}px, ${translateY.toFixed(0)}px)`;}
     function drawScalePoint(videoPoint) {const svgX = videoPoint.x * scale + translateX;const svgY = videoPoint.y * scale + translateY;const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');circle.setAttribute('cx', svgX);circle.setAttribute('cy', svgY);circle.setAttribute('r', 5);circle.setAttribute('fill', 'red');circle.setAttribute('stroke', 'white');circle.setAttribute('stroke-width', 1);scaleOverlay.appendChild(circle);}
@@ -86,7 +89,8 @@ document.addEventListener('DOMContentLoaded', function() {
         };
         videoPlayer.requestVideoFrameCallback(frameCallback);
     }
-    
+    function updateFpsDisplay() { if (measuredFps) { const timePerFrame = 1 / measuredFps; const framesInPointOneSec = 0.1 / timePerFrame; fpsDisplay.textContent = `(実測fps: ${measuredFps.toFixed(1)}    ,    1フレーム: ${timePerFrame.toFixed(3)}s    ,    0.1s≈${framesInPointOneSec.toFixed(1)}フレーム)`; } else { fpsDisplay.textContent = ' (fps計測失敗)'; } }
+
     // ========= 初期化処理 =========
     updateDebugOverlay();
     updateObjectTabs();
