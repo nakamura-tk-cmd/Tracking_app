@@ -17,7 +17,6 @@ document.addEventListener('DOMContentLoaded', function() {
     let exactMediaTime = 0, isCallbackRegistered = false;
     let timeBeforeRemeasure = 0;
 
-    // ▼ 追加：高精度タッチズーム用の変数 ▼
     let lastPinchDist = null;
     let lastPinchCenterX = null;
     let lastPinchCenterY = null;
@@ -282,7 +281,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!hasDragged && videoPlayer.paused) { handleInteraction(e.clientX, e.clientY); }
     });
     
-    // ▼ マウスホイールによるズーム ▼
     eventShield.addEventListener('wheel', function(e) {
         e.preventDefault();
         const rect = videoContainer.getBoundingClientRect();
@@ -295,7 +293,6 @@ document.addEventListener('DOMContentLoaded', function() {
         applyZoomPan();
     }, { passive: false });
 
-    // ▼ 修正：iPad等での2本指タッチ開始（中心点を記録） ▼
     eventShield.addEventListener('touchstart', function(e) {
         e.preventDefault(); 
         if (e.touches.length === 2) {
@@ -315,7 +312,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }, { passive: false });
 
-    // ▼ 修正：iPad等での2本指タッチ移動（中心点に基づいた拡大と移動） ▼
     eventShield.addEventListener('touchmove', function(e) {
         e.preventDefault();
         if (isScalingMode && scalePoints.length === 1 && e.touches.length === 1) {
@@ -340,15 +336,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 scale = Math.max(0.1, Math.min(scale, 10));
             }
 
-            // 1. スケール変更に伴う中心点の補正（マウスホイールと同じ理屈）
             translateX = currentCenterX - (currentCenterX - translateX) * (scale / oldScale);
             translateY = currentCenterY - (currentCenterY - translateY) * (scale / oldScale);
 
-            // 2. 2本指自体の移動（パン操作）を加算
             translateX += (currentCenterX - lastPinchCenterX);
             translateY += (currentCenterY - lastPinchCenterY);
 
-            // 次の動きのために状態を保存
             lastPinchDist = dist;
             lastPinchCenterX = currentCenterX;
             lastPinchCenterY = currentCenterY;
@@ -367,7 +360,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }, { passive: false });
 
-    // ▼ 修正：タッチ終了時のリセット ▼
     eventShield.addEventListener('touchend', function(e) {
         e.preventDefault();
         if (e.touches.length === 0) {
@@ -375,9 +367,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 handleInteraction(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
             }
             isDragging = false; 
-            lastPinchDist = null; // リセット
+            lastPinchDist = null; 
         } else if (e.touches.length < 2) {
-            lastPinchDist = null; // 1本指が離れた場合もリセット
+            lastPinchDist = null; 
         }
     }, { passive: false });
 
