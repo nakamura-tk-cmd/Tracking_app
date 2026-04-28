@@ -487,7 +487,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     function clearScaleOverlay() { scaleOverlay.innerHTML = ''; }
     
-    // ▼ 修正：HTMLの組み立てを1行（横並び）にするため、divクラスを変更 ▼
     function updateDataTable() {
         dataTableHead.innerHTML = '';
         const headRow = dataTableHead.insertRow();

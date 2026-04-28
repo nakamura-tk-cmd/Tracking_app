@@ -21,7 +21,7 @@ h1 {
     font-weight: bold;
 }
 
-/* ▼ ワークスペース（動画とボタンの配置） ▼ */
+/* ▼ ワークスペース（動画とパネルの配置） ▼ */
 .workspace {
     display: flex;
     flex-direction: column;
@@ -30,12 +30,8 @@ h1 {
 }
 
 .workspace.portrait {
-    flex-direction: row; 
+    flex-direction: row-reverse; /* 右に動画、左にパネル */
     align-items: stretch;
-}
-
-.workspace.portrait #video-container {
-    order: 3; 
 }
 
 #video-container {
@@ -84,7 +80,7 @@ h1 {
     z-index: 20;
 }
 
-/* ▼ 操作パネル（横長動画のとき） ▼ */
+/* ▼ 操作パネル（横長動画のとき：スライダーが上、ボタンが下） ▼ */
 .main-controls-container {
     display: flex;
     flex-direction: column;
@@ -111,20 +107,19 @@ h1 {
     cursor: pointer;
 }
 
-/* ▼ 操作パネル（縦長動画のとき） ▼ */
+/* ▼ 操作パネル（縦長動画のとき：ボタン群を一番左に、スライダーをその右に配置） ▼ */
 .workspace.portrait .main-controls-container {
-    flex-direction: row; 
+    /* HTMLの構造は「スライダー(右)→ボタン(左)」となるよう row-reverse を指定 */
+    flex-direction: row-reverse; 
     align-items: center;
     min-width: min-content; 
     padding: 10px; 
-    order: 1; 
 }
 
 .workspace.portrait .controls-buttons-wrap {
     flex-direction: column;
     justify-content: center;
     gap: 15px; 
-    order: 1; 
 }
 .workspace.portrait .main-controls-row1, 
 .workspace.portrait .main-controls-row2 {
@@ -140,7 +135,6 @@ h1 {
     width: 40px;
     height: 100%;
     padding: 0 10px; 
-    order: 2; 
 }
 .workspace.portrait #seek-bar {
     -webkit-appearance: slider-vertical;
@@ -210,20 +204,18 @@ th {
     background-color: #fffacd;
 }
 
-/* ▼ 修正：テーブル内のデータを1行にまとめるための横並び設定 ▼ */
 .data-cell-content {
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 15px; /* 座標とボタンの間のすき間 */
+    gap: 15px; 
     white-space: nowrap;
 }
 .cell-actions {
     display: flex;
     align-items: center;
-    gap: 5px; /* ボタン同士のすき間 */
+    gap: 5px; 
 }
-/* テーブル内のボタンは少し小さくして行幅を抑える */
 .cell-actions button {
     padding: 4px 8px;
     font-size: 0.9em;
