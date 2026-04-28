@@ -15,12 +15,12 @@ document.addEventListener('DOMContentLoaded', function() {
     let origin = { x: 0, y: 0 }, isOriginMode = false;
     let currentFile = null, measuredFps = null;
     let exactMediaTime = 0, isCallbackRegistered = false;
-
-    // タッチズーム用
-    let initialPinchDist = null, initialPinchScale = 1;
-    
-    // 再計測キャンセル用の変数
     let timeBeforeRemeasure = 0;
+
+    // ▼ 追加：高精度タッチズーム用の変数 ▼
+    let lastPinchDist = null;
+    let lastPinchCenterX = null;
+    let lastPinchCenterY = null;
 
     // ========= HTML要素の取得 =========
     const fileInput = document.getElementById('video-input');
@@ -61,7 +61,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const fpsDisplay = document.getElementById('fps-display');
     const workspace = document.getElementById('workspace');
 
-    // 再計測キャンセルUI
     const remeasureAlert = document.getElementById('remeasure-alert');
     const cancelRemeasureBtn = document.getElementById('cancel-remeasure-btn');
 
@@ -282,6 +281,8 @@ document.addEventListener('DOMContentLoaded', function() {
         isDragging = false;
         if (!hasDragged && videoPlayer.paused) { handleInteraction(e.clientX, e.clientY); }
     });
+    
+    // ▼ マウスホイールによるズーム ▼
     eventShield.addEventListener('wheel', function(e) {
         e.preventDefault();
         const rect = videoContainer.getBoundingClientRect();
@@ -294,13 +295,18 @@ document.addEventListener('DOMContentLoaded', function() {
         applyZoomPan();
     }, { passive: false });
 
+    // ▼ 修正：iPad等での2本指タッチ開始（中心点を記録） ▼
     eventShield.addEventListener('touchstart', function(e) {
         e.preventDefault(); 
         if (e.touches.length === 2) {
             const dx = e.touches[0].clientX - e.touches[1].clientX;
             const dy = e.touches[0].clientY - e.touches[1].clientY;
-            initialPinchDist = Math.sqrt(dx*dx + dy*dy);
-            initialPinchScale = scale;
+            lastPinchDist = Math.sqrt(dx*dx + dy*dy);
+            
+            const rect = videoContainer.getBoundingClientRect();
+            lastPinchCenterX = ((e.touches[0].clientX + e.touches[1].clientX) / 2) - rect.left;
+            lastPinchCenterY = ((e.touches[0].clientY + e.touches[1].clientY) / 2) - rect.top;
+            
             isDragging = false;
         } else if (e.touches.length === 1) {
             isDragging = true; hasDragged = false;
@@ -309,6 +315,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }, { passive: false });
 
+    // ▼ 修正：iPad等での2本指タッチ移動（中心点に基づいた拡大と移動） ▼
     eventShield.addEventListener('touchmove', function(e) {
         e.preventDefault();
         if (isScalingMode && scalePoints.length === 1 && e.touches.length === 1) {
@@ -317,12 +324,35 @@ document.addEventListener('DOMContentLoaded', function() {
             const currentMousePoint = { x: (e.touches[0].clientX - rect.left - translateX) / scale, y: (e.touches[0].clientY - rect.top - translateY) / scale }; 
             drawScaleLine(p1, currentMousePoint);
         }
-        if (e.touches.length === 2 && initialPinchDist) {
+        
+        if (e.touches.length === 2 && lastPinchDist) {
+            const rect = videoContainer.getBoundingClientRect();
+            const currentCenterX = ((e.touches[0].clientX + e.touches[1].clientX) / 2) - rect.left;
+            const currentCenterY = ((e.touches[0].clientY + e.touches[1].clientY) / 2) - rect.top;
+
             const dx = e.touches[0].clientX - e.touches[1].clientX;
             const dy = e.touches[0].clientY - e.touches[1].clientY;
             const dist = Math.sqrt(dx*dx + dy*dy);
-            scale = initialPinchScale * (dist / initialPinchDist);
-            scale = Math.max(0.1, Math.min(scale, 10));
+            
+            const oldScale = scale;
+            if (lastPinchDist > 0) {
+                scale *= (dist / lastPinchDist);
+                scale = Math.max(0.1, Math.min(scale, 10));
+            }
+
+            // 1. スケール変更に伴う中心点の補正（マウスホイールと同じ理屈）
+            translateX = currentCenterX - (currentCenterX - translateX) * (scale / oldScale);
+            translateY = currentCenterY - (currentCenterY - translateY) * (scale / oldScale);
+
+            // 2. 2本指自体の移動（パン操作）を加算
+            translateX += (currentCenterX - lastPinchCenterX);
+            translateY += (currentCenterY - lastPinchCenterY);
+
+            // 次の動きのために状態を保存
+            lastPinchDist = dist;
+            lastPinchCenterX = currentCenterX;
+            lastPinchCenterY = currentCenterY;
+
             applyZoomPan();
         } else if (e.touches.length === 1 && isDragging) {
             const dx = e.touches[0].clientX - lastMouseX;
@@ -337,15 +367,20 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }, { passive: false });
 
+    // ▼ 修正：タッチ終了時のリセット ▼
     eventShield.addEventListener('touchend', function(e) {
         e.preventDefault();
         if (e.touches.length === 0) {
             if (isDragging && !hasDragged && videoPlayer.paused) {
                 handleInteraction(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
             }
-            isDragging = false; initialPinchDist = null;
+            isDragging = false; 
+            lastPinchDist = null; // リセット
+        } else if (e.touches.length < 2) {
+            lastPinchDist = null; // 1本指が離れた場合もリセット
         }
     }, { passive: false });
+
 
     downloadCsvBtn.addEventListener('click', function() {
         if (trackingData.length === 0) { alert('記録されたデータがありません。'); return; }
@@ -439,9 +474,7 @@ document.addEventListener('DOMContentLoaded', function() {
         scaleOverlay.appendChild(c); 
     }
     
-    // ▼ 修正：古い線を消去し、点線で描画するように変更 ▼
     function drawScaleLine(p1, p2) { 
-        // 既存の線を削除（軌跡が残らないようにする）
         const existingLine = scaleOverlay.querySelector('line');
         if (existingLine) {
             existingLine.remove();
@@ -456,7 +489,7 @@ document.addEventListener('DOMContentLoaded', function() {
         l.setAttribute('y2', svgP2.y); 
         l.setAttribute('stroke', 'yellow'); 
         l.setAttribute('stroke-width', 2); 
-        l.setAttribute('stroke-dasharray', '5 5'); // 点線にする
+        l.setAttribute('stroke-dasharray', '5 5'); 
         scaleOverlay.appendChild(l); 
     }
     
@@ -544,7 +577,6 @@ document.addEventListener('DOMContentLoaded', function() {
         fpsDisplay.textContent = `(実測fps: ${measuredFps.toFixed(1)}   ,   1フレーム: ${(1/measuredFps).toFixed(4)}s   ,   0.1s ≈ ${(0.1*measuredFps).toFixed(1)}フレーム)`;
     }
 
-    // 初期化処理
     updateObjectTabs();
     updateDataTable();
 });

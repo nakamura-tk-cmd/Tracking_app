@@ -21,16 +21,14 @@ h1 {
     font-weight: bold;
 }
 
-/* ▼ ワークスペース（動画とボタンの配置） ▼ */
 .workspace {
     display: flex;
     flex-direction: column;
     gap: 15px;
     margin-bottom: 15px;
 }
-/* ▼ 修正：縦長動画（Portrait）のとき、操作パネルを左側に配置 ▼ */
 .workspace.portrait {
-    flex-direction: row-reverse; /* 左右反転：ボタン(左) → 動画(右) */
+    flex-direction: row-reverse;
     align-items: stretch;
 }
 
@@ -79,7 +77,6 @@ h1 {
     z-index: 20;
 }
 
-/* ▼ 操作ボタンエリア ▼ */
 .main-controls-container {
     display: flex;
     flex-direction: column;
@@ -106,7 +103,6 @@ h1 {
     cursor: pointer;
 }
 
-/* ▼ 修正：縦長動画（Portrait）時のUI上書き設定 ▼ */
 .workspace.portrait .main-controls-container {
     flex-direction: row;
 }
@@ -118,30 +114,25 @@ h1 {
 .workspace.portrait .main-controls-row2 {
     flex-direction: column;
 }
-
-/* ▼ 修正：1段目と2段目のボタンの間にすき間と線を追加 ▼ */
 .workspace.portrait .main-controls-row1 {
     margin-bottom: 15px;
     border-bottom: 2px solid #ccc;
     padding-bottom: 15px;
 }
-
 .workspace.portrait .main-controls-row3 {
     width: 40px;
     height: 100%;
     padding: 0 10px;
 }
-/* ▼ 修正：縦型スライダーの方向を反転（スタートが上、終わりが下） ▼ */
 .workspace.portrait #seek-bar {
-    -webkit-appearance: slider-vertical; /* 縦型スライダー */
-    writing-mode: bt-lr; /* 内部的な値は下から上へ */
-    transform: rotate(180deg); /* CSSで180度回転させて、見た目の上下を反転 */
+    -webkit-appearance: slider-vertical;
+    writing-mode: bt-lr;
+    transform: rotate(180deg);
     width: 100%;
     height: 100%;
     min-height: 400px;
 }
 
-/* ▼ 情報表示・設定パネル ▼ */
 .info-display {
     margin: 10px 0;
     font-weight: bold;
@@ -172,7 +163,6 @@ button:hover {
     background-color: #f0f0f0;
 }
 
-/* ▼ データテーブル設定 ▼ */
 .data-header {
     display: flex;
     justify-content: space-between;
@@ -202,7 +192,6 @@ th {
 .cell-actions {
     margin-top: 5px;
 }
-/* 再計測モード用のキャンセルUI */
 .remeasure-alert {
     background-color: #fffacd;
     border: 1px solid #ffce56;
@@ -220,7 +209,6 @@ th {
     background-color: #ffb3b3;
 }
 
-/* ▼ フォントサイズ拡大設定 ▼ */
 #interval-input, #object-count {
     font-size: 1.4em;
     font-weight: bold;
@@ -251,6 +239,6 @@ th {
 }
 .object-tab.active {
     font-weight: bold;
-    font-size: 1.5em; /* 選択されているタブを大きく */
+    font-size: 1.5em;
     background-color: #e6f7ff;
 }
