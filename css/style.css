@@ -21,21 +21,18 @@ h1 {
     font-weight: bold;
 }
 
-/* ▼ ワークスペース（動画とボタンの配置） ▼ */
 .workspace {
     display: flex;
     flex-direction: column;
     gap: 15px;
     margin-bottom: 15px;
 }
-
-/* ▼ 修正：縦長動画のとき、左から右へ（通常順）並べる ▼ */
 .workspace.portrait {
-    flex-direction: row; 
+    flex-direction: row-reverse;
     align-items: stretch;
 }
 
-/* ▼ 修正：動画コンテナを一番右にするため、order を大きく設定 ▼ */
+/* 縦長動画の際、動画を一番右にするための設定 */
 .workspace.portrait #video-container {
     order: 3; 
 }
@@ -86,6 +83,7 @@ h1 {
     z-index: 20;
 }
 
+/* ▼ 操作パネル（横長動画のとき：ボタンが上、スライダーが下） ▼ */
 .main-controls-container {
     display: flex;
     flex-direction: column;
@@ -112,22 +110,18 @@ h1 {
     cursor: pointer;
 }
 
-/* ▼ 縦長動画（Portrait）時のUI上書き設定 ▼ */
+/* ▼ 操作パネル（縦長動画のとき：左からボタン群、スライダーの順） ▼ */
 .workspace.portrait .main-controls-container {
     flex-direction: row; 
     align-items: center;
     min-width: min-content; 
     padding: 10px; 
-    /* パネル全体を左側に寄せるため order を設定 */
-    order: 1; 
+    /* 余計な order を削除。HTMLの記述順（ボタン→スライダー）に従う */
 }
-
-/* ▼ 修正：ボタン群を一番左（1番目）にする ▼ */
 .workspace.portrait .controls-buttons-wrap {
     flex-direction: column;
     justify-content: center;
     gap: 15px; 
-    order: 1; 
 }
 .workspace.portrait .main-controls-row1, 
 .workspace.portrait .main-controls-row2 {
@@ -138,13 +132,10 @@ h1 {
     border-bottom: 2px solid #ccc;
     padding-bottom: 15px;
 }
-
-/* ▼ 修正：スライダーを真ん中（2番目）にする ▼ */
 .workspace.portrait .main-controls-row3 {
     width: 40px;
     height: 100%;
     padding: 0 10px; 
-    order: 2; 
 }
 .workspace.portrait #seek-bar {
     -webkit-appearance: slider-vertical;
