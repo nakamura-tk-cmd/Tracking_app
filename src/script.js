@@ -69,10 +69,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // ========= イベントリスナーの設定 =========
 
-    // ▼▼▼ 修正：iPad対応ボタンの処理を確実な形に変更 ▼▼▼
+    // ▼ iPad対応用の「-」「+」ボタンの処理 ▼
     if (intervalMinusBtn && intervalInput) {
         intervalMinusBtn.addEventListener('click', function(e) {
-            e.preventDefault(); // デフォルトの動作をキャンセル
+            e.preventDefault();
             let val = parseInt(intervalInput.value, 10);
             if (isNaN(val)) val = 1;
             if (val > 1) {
@@ -83,13 +83,56 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (intervalPlusBtn && intervalInput) {
         intervalPlusBtn.addEventListener('click', function(e) {
-            e.preventDefault(); // デフォルトの動作をキャンセル
+            e.preventDefault();
             let val = parseInt(intervalInput.value, 10);
             if (isNaN(val)) val = 1;
             intervalInput.value = val + 1;
         });
     }
-    // ▲▲▲ 修正ここまで ▲▲▲
+
+    // ▼ 復元：動画ファイル読み込み処理 ▼
+    fileInput.addEventListener('change', function(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        currentFile = file;
+        videoPlayer.src = URL.createObjectURL(file);
+        videoSize.textContent = `ファイルサイズ: ${(file.size / 1024 / 1024).toFixed(2)} MB`;
+        videoInfoPanel.classList.remove('hidden');
+        trackingData = [];
+        updateObjectTabs();
+        updateDataTable();
+        resetZoomPan();
+    });
+
+    // ▼ 復元：再生・コマ送りボタン処理 ▼
+    playPauseBtn.addEventListener('click', function() {
+        if (videoPlayer.paused) { 
+            videoPlayer.play(); 
+            playPauseBtn.textContent = '⏸'; 
+        } else { 
+            videoPlayer.pause(); 
+            playPauseBtn.textContent = '▶'; 
+        }
+    });
+
+    frameForwardBtn.addEventListener('click', function() {
+        videoPlayer.pause(); 
+        playPauseBtn.textContent = '▶';
+        videoPlayer.currentTime += 1 / (measuredFps || FRAME_RATE);
+    });
+
+    frameBackBtn.addEventListener('click', function() {
+        videoPlayer.pause(); 
+        playPauseBtn.textContent = '▶';
+        videoPlayer.currentTime -= 1 / (measuredFps || FRAME_RATE);
+    });
+
+    // ▼ 復元：記録モード切替処理 ▼
+    dataModeRadios.forEach(radio => { 
+        radio.addEventListener('change', function(event) { 
+            dataMode = event.target.value; 
+        }); 
+    });
 
     setOriginBtn.addEventListener('click', function() {
         isOriginMode = true;
@@ -265,6 +308,33 @@ document.addEventListener('DOMContentLoaded', function() {
 
     clearDataBtn.addEventListener('click', function() { if (confirm("全データを消去しますか？")) { trackingData = []; updateDataTable(); } });
 
+    // ▼ 復元：データテーブル内の削除・再計測ボタン処理 ▼
+    dataTableBody.addEventListener('click', function(event) {
+        const target = event.target.closest('button');
+        if (!target) return;
+        const time = parseFloat(target.dataset.time);
+        const id = parseInt(target.dataset.id, 10);
+        const index = trackingData.findIndex(p => Math.abs(p.t - time) < 0.001 && p.id === id);
+        if (index === -1) return;
+        
+        if (target.classList.contains('cell-delete-btn')) {
+            if (confirm("削除しますか？")) {
+                trackingData.splice(index, 1);
+                updateDataTable();
+            }
+        } else if (target.classList.contains('cell-remeasure-btn')) {
+            isUpdateMode = true;
+            updateIndex = index;
+            videoPlayer.currentTime = time;
+            videoPlayer.pause();
+            playPauseBtn.textContent = '▶';
+            activeObjectId = id;
+            updateObjectTabs();
+            updateDataTable();
+            alert("再計測モードです。\n動画上の正しい位置をクリックしてください。");
+        }
+    });
+
     // ========= 関数定義 =========
     function applyZoomPan() { videoPlayer.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`; updateDebugOverlay(); clearScaleOverlay(); scalePoints.forEach(p => drawScalePoint(p)); }
     function resetZoomPan() { scale = 1; translateX = 0; translateY = 0; applyZoomPan(); }
@@ -290,6 +360,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 }
                 const row = dataTableBody.insertRow();
+                if (isUpdateMode && updateIndex !== null && trackingData[updateIndex] === p) {
+                    row.classList.add('updating-row');
+                }
                 row.insertCell().textContent = p.t.toFixed(4);
                 row.insertCell().textContent = p.id;
                 const x = scaleRatio ? ((p.x - origin.x)/scaleRatio).toFixed(4) : (p.x - origin.x).toFixed(1);
@@ -333,6 +406,7 @@ document.addEventListener('DOMContentLoaded', function() {
         fpsDisplay.textContent = `(実測fps: ${measuredFps.toFixed(1)}   ,   1フレーム: ${(1/measuredFps).toFixed(4)}s   ,   0.1s ≈ ${(0.1*measuredFps).toFixed(1)}フレーム)`;
     }
 
+    // 初期化処理
     updateObjectTabs();
     updateDataTable();
 });
