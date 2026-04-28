@@ -37,7 +37,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const debugOverlay = document.getElementById('debug-overlay');
     const intervalInput = document.getElementById('interval-input');
     
-    // ▼ iPad対応用に追加したボタン ▼
+    // ▼ iPad対応用ボタン ▼
     const intervalMinusBtn = document.getElementById('interval-minus-btn');
     const intervalPlusBtn = document.getElementById('interval-plus-btn');
 
@@ -69,22 +69,27 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // ========= イベントリスナーの設定 =========
 
-    // ▼ iPad対応用の「-」「+」ボタンの処理 ▼
-    if (intervalMinusBtn) {
-        intervalMinusBtn.addEventListener('click', function() {
-            let val = parseInt(intervalInput.value, 10) || 1;
+    // ▼▼▼ 修正：iPad対応ボタンの処理を確実な形に変更 ▼▼▼
+    if (intervalMinusBtn && intervalInput) {
+        intervalMinusBtn.addEventListener('click', function(e) {
+            e.preventDefault(); // デフォルトの動作をキャンセル
+            let val = parseInt(intervalInput.value, 10);
+            if (isNaN(val)) val = 1;
             if (val > 1) {
                 intervalInput.value = val - 1;
             }
         });
     }
 
-    if (intervalPlusBtn) {
-        intervalPlusBtn.addEventListener('click', function() {
-            let val = parseInt(intervalInput.value, 10) || 1;
+    if (intervalPlusBtn && intervalInput) {
+        intervalPlusBtn.addEventListener('click', function(e) {
+            e.preventDefault(); // デフォルトの動作をキャンセル
+            let val = parseInt(intervalInput.value, 10);
+            if (isNaN(val)) val = 1;
             intervalInput.value = val + 1;
         });
     }
+    // ▲▲▲ 修正ここまで ▲▲▲
 
     setOriginBtn.addEventListener('click', function() {
         isOriginMode = true;
