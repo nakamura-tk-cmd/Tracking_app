@@ -19,16 +19,12 @@ document.addEventListener('DOMContentLoaded', function() {
     let isOriginMode = false;
     let currentFile = null;
     let measuredFps = null;
-
-    // 精密な時刻管理用変数
     let exactMediaTime = 0;
+    let isCallbackRegistered = false;
     
     // ========= HTML要素の取得 =========
     const fileInput = document.getElementById('video-input');
     const videoPlayer = document.getElementById('video-player');
-    const playPauseBtn = document.getElementById('play-pause-btn');
-    const frameBackBtn = document.getElementById('frame-back-btn');
-    const frameForwardBtn = document.getElementById('frame-forward-btn');
     const timeDisplay = document.getElementById('time-display');
     const dataTableBody = document.getElementById('data-table-body');
     const dataTableHead = document.getElementById('data-table-head');
@@ -37,10 +33,18 @@ document.addEventListener('DOMContentLoaded', function() {
     const debugOverlay = document.getElementById('debug-overlay');
     const intervalInput = document.getElementById('interval-input');
     
-    // ▼ iPad対応用ボタン ▼
+    // 新しい2段ボタンの取得
+    const rewindBtn = document.getElementById('rewind-btn');
+    const playBtn = document.getElementById('play-btn');
+    const pauseBtn = document.getElementById('pause-btn');
+    const goEndBtn = document.getElementById('go-end-btn');
+    const stepBackNBtn = document.getElementById('step-back-n-btn');
+    const frameBackBtn = document.getElementById('frame-back-btn');
+    const frameForwardBtn = document.getElementById('frame-forward-btn');
+    const stepForwardNBtn = document.getElementById('step-forward-n-btn');
+
     const intervalMinusBtn = document.getElementById('interval-minus-btn');
     const intervalPlusBtn = document.getElementById('interval-plus-btn');
-
     const downloadCsvBtn = document.getElementById('download-csv-btn');
     const clearDataBtn = document.getElementById('clear-data-btn');
     const dataModeRadios = document.querySelectorAll('input[name="data-mode"]');
@@ -56,28 +60,15 @@ document.addEventListener('DOMContentLoaded', function() {
     const videoWarning = document.getElementById('video-warning');
     const setOriginBtn = document.getElementById('set-origin-btn');
     const fpsDisplay = document.getElementById('fps-display');
-    const rewindBtn = document.getElementById('rewind-btn');
-    
-    // ========= 表示中フレームの正確な時刻の監視 =========
-    if ('requestVideoFrameCallback' in HTMLVideoElement.prototype) {
-        const updateFrameMetadata = (now, metadata) => {
-            exactMediaTime = metadata.mediaTime;
-            videoPlayer.requestVideoFrameCallback(updateFrameMetadata);
-        };
-        videoPlayer.requestVideoFrameCallback(updateFrameMetadata);
-    }
 
     // ========= イベントリスナーの設定 =========
 
-    // ▼ iPad対応用の「-」「+」ボタンの処理 ▼
     if (intervalMinusBtn && intervalInput) {
         intervalMinusBtn.addEventListener('click', function(e) {
             e.preventDefault();
             let val = parseInt(intervalInput.value, 10);
             if (isNaN(val)) val = 1;
-            if (val > 1) {
-                intervalInput.value = val - 1;
-            }
+            if (val > 1) intervalInput.value = val - 1;
         });
     }
 
@@ -90,7 +81,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // ▼ 復元：動画ファイル読み込み処理 ▼
     fileInput.addEventListener('change', function(event) {
         const file = event.target.files[0];
         if (!file) return;
@@ -104,30 +94,48 @@ document.addEventListener('DOMContentLoaded', function() {
         resetZoomPan();
     });
 
-    // ▼ 復元：再生・コマ送りボタン処理 ▼
-    playPauseBtn.addEventListener('click', function() {
-        if (videoPlayer.paused) { 
-            videoPlayer.play(); 
-            playPauseBtn.textContent = '⏸'; 
-        } else { 
-            videoPlayer.pause(); 
-            playPauseBtn.textContent = '▶'; 
-        }
+    // ▼ 新しい操作ボタンの処理 ▼
+    rewindBtn.addEventListener('click', () => {
+        videoPlayer.pause();
+        videoPlayer.currentTime = 0;
     });
 
-    frameForwardBtn.addEventListener('click', function() {
-        videoPlayer.pause(); 
-        playPauseBtn.textContent = '▶';
-        videoPlayer.currentTime += 1 / (measuredFps || FRAME_RATE);
+    playBtn.addEventListener('click', () => {
+        videoPlayer.play();
     });
 
-    frameBackBtn.addEventListener('click', function() {
-        videoPlayer.pause(); 
-        playPauseBtn.textContent = '▶';
+    pauseBtn.addEventListener('click', () => {
+        videoPlayer.pause();
+    });
+
+    goEndBtn.addEventListener('click', () => {
+        videoPlayer.pause();
+        videoPlayer.currentTime = videoPlayer.duration;
+    });
+
+    stepBackNBtn.addEventListener('click', () => {
+        videoPlayer.pause();
+        let n = parseInt(intervalInput.value, 10) || 1;
+        videoPlayer.currentTime -= n / (measuredFps || FRAME_RATE);
+    });
+
+    frameBackBtn.addEventListener('click', () => {
+        videoPlayer.pause();
         videoPlayer.currentTime -= 1 / (measuredFps || FRAME_RATE);
     });
 
-    // ▼ 復元：記録モード切替処理 ▼
+    frameForwardBtn.addEventListener('click', () => {
+        videoPlayer.pause();
+        videoPlayer.currentTime += 1 / (measuredFps || FRAME_RATE);
+    });
+
+    stepForwardNBtn.addEventListener('click', () => {
+        videoPlayer.pause();
+        let n = parseInt(intervalInput.value, 10) || 1;
+        videoPlayer.currentTime += n / (measuredFps || FRAME_RATE);
+    });
+    // ▲ ここまで ▲
+
     dataModeRadios.forEach(radio => { 
         radio.addEventListener('change', function(event) { 
             dataMode = event.target.value; 
@@ -144,12 +152,6 @@ document.addEventListener('DOMContentLoaded', function() {
         scalePoints = [];
         clearScaleOverlay();
         alert("スケール設定モードを開始します。\n基準となる物体の「始点」をクリックしてください。");
-    });
-
-    rewindBtn.addEventListener('click', function() {
-        videoPlayer.pause();
-        playPauseBtn.textContent = '▶';
-        videoPlayer.currentTime = 0;
     });
 
     seekBar.addEventListener('input', function() {
@@ -172,6 +174,15 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
         measureFps();
+
+        if ('requestVideoFrameCallback' in HTMLVideoElement.prototype && !isCallbackRegistered) {
+            const updateFrameMetadata = (now, metadata) => {
+                exactMediaTime = metadata.mediaTime;
+                videoPlayer.requestVideoFrameCallback(updateFrameMetadata);
+            };
+            videoPlayer.requestVideoFrameCallback(updateFrameMetadata);
+            isCallbackRegistered = true;
+        }
     });
 
     videoPlayer.addEventListener('timeupdate', function() {
@@ -277,38 +288,55 @@ document.addEventListener('DOMContentLoaded', function() {
     eventShield.addEventListener('mousemove', function(event) { if (isScalingMode && scalePoints.length === 1) { const p1 = scalePoints[0]; const rect = videoContainer.getBoundingClientRect(); const currentMousePoint = { x: (event.clientX - rect.left - translateX) / scale, y: (event.clientY - rect.top - translateY) / scale }; drawScaleLine(p1, currentMousePoint); } if (!isDragging) return; if (Math.abs(event.clientX - startMouseX) > DRAG_THRESHOLD || Math.abs(event.clientY - startMouseY) > DRAG_THRESHOLD) { hasDragged = true; } const dx = event.clientX - lastMouseX; const dy = event.clientY - lastMouseY; translateX += dx; translateY += dy; lastMouseX = event.clientX; lastMouseY = event.clientY; applyZoomPan(); });
     eventShield.addEventListener('wheel', function(event) { event.preventDefault(); const rect = videoContainer.getBoundingClientRect(); const mouseX = event.clientX - rect.left; const mouseY = event.clientY - rect.top; const oldScale = scale; scale *= (event.deltaY < 0 ? 1.1 : 0.9); scale = Math.max(0.1, Math.min(scale, 10)); translateX = mouseX - (mouseX - translateX) * (scale / oldScale); translateY = mouseY - (mouseY - translateY) * (scale / oldScale); applyZoomPan(); }, { passive: false });
     
+    // ▼ CSV出力の修正：生徒に不要な列を削除し、時間・X・Yのみを出力 ▼
     downloadCsvBtn.addEventListener('click', function() {
         if (trackingData.length === 0) return;
-        let csv = "Time (s),Object ID,X (m),Y (m),Delta T (s),Velocity (m/s)\n";
-        for (let id = 1; id <= objectCount; id++) {
-            const objPoints = trackingData.filter(p => p.id === id).sort((a, b) => a.t - b.t);
-            objPoints.forEach((p, index) => {
-                const cx = p.x - origin.x;
-                const cy = origin.y - p.y;
-                let dt = "", vel = "";
-                if (index > 0) {
-                    const prev = objPoints[index - 1];
-                    dt = (p.t - prev.t).toFixed(6);
-                    if (scaleRatio && parseFloat(dt) > 0) {
-                        const d = Math.sqrt(Math.pow(p.x - prev.x, 2) + Math.pow(p.y - prev.y, 2)) / scaleRatio;
-                        vel = (d / parseFloat(dt)).toFixed(4);
-                    }
-                }
-                const xm = scaleRatio ? (cx / scaleRatio).toFixed(6) : cx.toFixed(1);
-                const ym = scaleRatio ? (cy / scaleRatio).toFixed(6) : cy.toFixed(1);
-                csv += `${p.t.toFixed(6)},${p.id},${xm},${ym},${dt},${vel}\n`;
-            });
+        
+        let csv = "Time (s)";
+        if (objectCount === 1) {
+            csv += `,X ${scaleRatio ? '(m)' : '(px)'},Y ${scaleRatio ? '(m)' : '(px)'}\n`;
+        } else {
+            for (let i = 1; i <= objectCount; i++) {
+                csv += `,X${i} ${scaleRatio ? '(m)' : '(px)'},Y${i} ${scaleRatio ? '(m)' : '(px)'}`;
+            }
+            csv += "\n";
         }
+
+        let timeMap = new Map();
+        trackingData.forEach(p => {
+            let tStr = p.t.toFixed(4);
+            if (!timeMap.has(tStr)) timeMap.set(tStr, { time: p.t });
+            timeMap.get(tStr)[`obj${p.id}`] = p;
+        });
+        
+        let sortedTimes = Array.from(timeMap.values()).sort((a, b) => a.time - b.time);
+
+        sortedTimes.forEach(rowObj => {
+            csv += `${rowObj.time.toFixed(4)}`;
+            for (let i = 1; i <= objectCount; i++) {
+                let p = rowObj[`obj${i}`];
+                if (p) {
+                    const cx = p.x - origin.x;
+                    const cy = origin.y - p.y;
+                    const xm = scaleRatio ? (cx / scaleRatio).toFixed(5) : cx.toFixed(1);
+                    const ym = scaleRatio ? (cy / scaleRatio).toFixed(5) : cy.toFixed(1);
+                    csv += `,${xm},${ym}`;
+                } else {
+                    csv += `,,`;
+                }
+            }
+            csv += "\n";
+        });
+
         const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csv], { type: 'text/csv' });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = "analysis_data.csv";
+        a.download = "tracking_data.csv";
         a.click();
     });
 
     clearDataBtn.addEventListener('click', function() { if (confirm("全データを消去しますか？")) { trackingData = []; updateDataTable(); } });
 
-    // ▼ 復元：データテーブル内の削除・再計測ボタン処理 ▼
     dataTableBody.addEventListener('click', function(event) {
         const target = event.target.closest('button');
         if (!target) return;
@@ -327,7 +355,6 @@ document.addEventListener('DOMContentLoaded', function() {
             updateIndex = index;
             videoPlayer.currentTime = time;
             videoPlayer.pause();
-            playPauseBtn.textContent = '▶';
             activeObjectId = id;
             updateObjectTabs();
             updateDataTable();
@@ -343,33 +370,26 @@ document.addEventListener('DOMContentLoaded', function() {
     function drawScaleLine(p1, p2) { const svgP1 = { x: p1.x * scale + translateX, y: p1.y * scale + translateY }; const svgP2 = { x: p2.x * scale + translateX, y: p2.y * scale + translateY }; const l = document.createElementNS('http://www.w3.org/2000/svg', 'line'); l.setAttribute('x1', svgP1.x); l.setAttribute('y1', svgP1.y); l.setAttribute('x2', svgP2.x); l.setAttribute('y2', svgP2.y); l.setAttribute('stroke', 'yellow'); l.setAttribute('stroke-width', 2); scaleOverlay.appendChild(l); }
     function clearScaleOverlay() { scaleOverlay.innerHTML = ''; }
     
+    // ▼ データテーブルの修正：不要な情報を削り、時間・座標・操作のみにする ▼
     function updateDataTable() {
-        dataTableHead.innerHTML = '<tr><th>時間(s)</th><th>ID</th><th>座標(m)</th><th>Δt(s)</th><th>速度(m/s)</th><th>操作</th></tr>';
+        dataTableHead.innerHTML = `<tr><th>時間(s)</th><th>座標 ${scaleRatio ? '(m)' : '(px)'}</th><th>操作</th></tr>`;
         dataTableBody.innerHTML = '';
         for (let id = 1; id <= objectCount; id++) {
             const objPoints = trackingData.filter(p => p.id === id).sort((a, b) => a.t - b.t);
-            objPoints.forEach((p, index) => {
-                let dt = "---", vel = "---";
-                if (index > 0) {
-                    const prev = objPoints[index - 1];
-                    const diffT = p.t - prev.t;
-                    dt = diffT.toFixed(4);
-                    if (scaleRatio && diffT > 0) {
-                        const d = Math.sqrt(Math.pow(p.x - prev.x, 2) + Math.pow(p.y - prev.y, 2)) / scaleRatio;
-                        vel = (d / diffT).toFixed(3);
-                    }
-                }
+            objPoints.forEach((p) => {
                 const row = dataTableBody.insertRow();
                 if (isUpdateMode && updateIndex !== null && trackingData[updateIndex] === p) {
                     row.classList.add('updating-row');
                 }
+                
+                // 複数物体をトラッキングした際に見分けがつくよう、行の左端に細い色線を入れます
+                row.style.borderLeft = `5px solid ${OBJECT_COLORS[id-1]}`;
+                
                 row.insertCell().textContent = p.t.toFixed(4);
-                row.insertCell().textContent = p.id;
                 const x = scaleRatio ? ((p.x - origin.x)/scaleRatio).toFixed(4) : (p.x - origin.x).toFixed(1);
                 const y = scaleRatio ? ((origin.y - p.y)/scaleRatio).toFixed(4) : (origin.y - p.y).toFixed(1);
                 row.insertCell().textContent = `(${x}, ${y})`;
-                row.insertCell().textContent = dt;
-                row.insertCell().textContent = vel;
+                
                 const opt = row.insertCell();
                 opt.innerHTML = `<button class="cell-remeasure-btn" data-time="${p.t}" data-id="${p.id}">🎯</button><button class="cell-delete-btn" data-time="${p.t}" data-id="${p.id}">🗑️</button>`;
             });

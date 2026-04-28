@@ -18,7 +18,7 @@
             <li><strong>スケールを設定:</strong> 「📏 スケール設定」を押し、動画内で既知の長さを持つ物体の両端を順にクリック後、その距離をメートル単位[m]で入力します。</li>
             <li><strong>フレーム数を設定:</strong> 「クリック時に進むフレーム数」に、1回のクリック操作で進めるコマ数を指定します。</li>
             <li><strong>物体数を設定:</strong> 「追跡する物体の数」を選択し、計測したい「物体タブ」を選択します。</li>
-            <li><strong>計測を開始:</strong> 計測を開始するフレーム（コマ）で動画を一時停止し、物体をクリックします。クリックすると、その時刻と位置が記録され、指定したフレーム数だけ動画が進みます。</li>
+            <li><strong>計測を開始:</strong> 計測を開始するフレーム（コマ）で動画を一時停止し、物体をクリックします。クリックすると、その時刻と位置が記録され、指定したフレーム数だけ動画が進みます。（※マウスのホイール操作や、タッチパネルでのピンチアウト・ピンチインで画像の拡大・縮小が可能です）</li>
             <li><strong>データを出力:</strong> 全ての計測完了後、「CSVダウンロード」ボタンでデータを保存します。</li>
         </ol>
     </details>
@@ -39,18 +39,26 @@
     <hr>
 
     <div id="video-container">
-        <video id="video-player" disablepictureinpicture></video>
+        <video id="video-player" playsinline muted disablepictureinpicture></video>
         <div id="event-shield"></div>
         <div id="debug-overlay"></div>
         <svg id="scale-overlay"></svg>
     </div>
     
-    <div class="panel main-controls">
-        <button id="rewind-btn" title="はじめに戻る">⏮</button>
-        <button id="frame-back-btn" title="1フレーム戻る">⏪</button>
-        <input type="range" id="seek-bar" value="0" step="any">
-        <button id="play-pause-btn" title="再生/一時停止">▶</button>
-        <button id="frame-forward-btn" title="1フレーム進む">⏩</button>
+    <div class="panel main-controls-container">
+        <div class="main-controls-row1">
+            <button id="rewind-btn" title="はじめに戻る">⏮ はじめに戻る</button>
+            <button id="play-btn" title="再生">▶ 再生</button>
+            <button id="pause-btn" title="停止">⏸ 停止</button>
+            <button id="go-end-btn" title="終わりまで進む">⏭ 終わりへ</button>
+        </div>
+        <div class="main-controls-row2">
+            <button id="step-back-n-btn" title="Nコマ戻る">⏪ Nコマ戻る</button>
+            <button id="frame-back-btn" title="1コマ戻る">◀ 1コマ戻る</button>
+            <input type="range" id="seek-bar" value="0" step="any">
+            <button id="frame-forward-btn" title="1コマ進む">▶ 1コマ進む</button>
+            <button id="step-forward-n-btn" title="Nコマ進む">⏩ Nコマ進む</button>
+        </div>
     </div>
     
     <div class="info-display">

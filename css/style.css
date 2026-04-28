@@ -63,14 +63,28 @@ h1 {
     pointer-events: none;
     z-index: 20;
 }
-.main-controls {
+
+/* ▼ 2段ボタン用のレイアウト ▼ */
+.main-controls-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+.main-controls-row1 {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+}
+.main-controls-row2 {
     display: flex;
     align-items: center;
     gap: 10px;
 }
 #seek-bar {
     flex-grow: 1;
+    margin: 0 10px;
 }
+
 .info-display {
     margin: 10px 0;
     font-weight: bold;
@@ -90,8 +104,14 @@ h1 {
     gap: 5px;
 }
 button {
-    padding: 5px 10px;
+    padding: 8px 12px;
     cursor: pointer;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background-color: #fff;
+}
+button:hover {
+    background-color: #f0f0f0;
 }
 .data-header {
     display: flex;
@@ -114,22 +134,41 @@ th {
 .updating-row {
     background-color: #fffacd;
 }
+
+/* ▼ 選択中のタブのフォントを大きくする ▼ */
 .object-tab {
-    padding: 5px 10px;
+    padding: 8px 15px;
     border: 1px solid #ccc;
     border-radius: 4px;
     background-color: #fff;
     cursor: pointer;
+    font-size: 1em;
+    transition: all 0.2s ease;
 }
 .object-tab.active {
     font-weight: bold;
+    font-size: 1.4em; /* サイズアップ */
 }
 
-/* ▼ iPad等のためのスピナーボタン用スタイル ▼ */
+/* ▼ 数字入力欄のフォントを大きくする ▼ */
+#interval-input, #object-count {
+    font-size: 1.4em;
+    font-weight: bold;
+    text-align: center;
+    vertical-align: middle;
+}
+#interval-input {
+    width: 70px;
+}
+#object-count {
+    width: auto;
+    padding: 5px;
+}
+
 .spinner-btn {
-    width: 32px;
-    height: 32px;
-    font-size: 18px;
+    width: 36px;
+    height: 36px;
+    font-size: 20px;
     font-weight: bold;
     margin: 0 5px;
     cursor: pointer;
@@ -140,9 +179,4 @@ th {
 }
 .spinner-btn:active {
     background-color: #d0d0d0;
-}
-#interval-input {
-    width: 60px;
-    text-align: center;
-    vertical-align: middle;
 }
