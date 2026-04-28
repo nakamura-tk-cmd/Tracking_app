@@ -21,18 +21,19 @@ h1 {
     font-weight: bold;
 }
 
+/* ▼ ワークスペース（動画とボタンの配置） ▼ */
 .workspace {
     display: flex;
     flex-direction: column;
     gap: 15px;
     margin-bottom: 15px;
 }
+
 .workspace.portrait {
-    flex-direction: row-reverse;
+    flex-direction: row; 
     align-items: stretch;
 }
 
-/* 縦長動画の際、動画を一番右にするための設定 */
 .workspace.portrait #video-container {
     order: 3; 
 }
@@ -83,7 +84,7 @@ h1 {
     z-index: 20;
 }
 
-/* ▼ 操作パネル（横長動画のとき：ボタンが上、スライダーが下） ▼ */
+/* ▼ 操作パネル（横長動画のとき） ▼ */
 .main-controls-container {
     display: flex;
     flex-direction: column;
@@ -110,18 +111,20 @@ h1 {
     cursor: pointer;
 }
 
-/* ▼ 操作パネル（縦長動画のとき：左からボタン群、スライダーの順） ▼ */
+/* ▼ 操作パネル（縦長動画のとき） ▼ */
 .workspace.portrait .main-controls-container {
     flex-direction: row; 
     align-items: center;
     min-width: min-content; 
     padding: 10px; 
-    /* 余計な order を削除。HTMLの記述順（ボタン→スライダー）に従う */
+    order: 1; 
 }
+
 .workspace.portrait .controls-buttons-wrap {
     flex-direction: column;
     justify-content: center;
     gap: 15px; 
+    order: 1; 
 }
 .workspace.portrait .main-controls-row1, 
 .workspace.portrait .main-controls-row2 {
@@ -132,10 +135,12 @@ h1 {
     border-bottom: 2px solid #ccc;
     padding-bottom: 15px;
 }
+
 .workspace.portrait .main-controls-row3 {
     width: 40px;
     height: 100%;
     padding: 0 10px; 
+    order: 2; 
 }
 .workspace.portrait #seek-bar {
     -webkit-appearance: slider-vertical;
@@ -204,9 +209,26 @@ th {
 .updating-row {
     background-color: #fffacd;
 }
-.cell-actions {
-    margin-top: 5px;
+
+/* ▼ 修正：テーブル内のデータを1行にまとめるための横並び設定 ▼ */
+.data-cell-content {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 15px; /* 座標とボタンの間のすき間 */
+    white-space: nowrap;
 }
+.cell-actions {
+    display: flex;
+    align-items: center;
+    gap: 5px; /* ボタン同士のすき間 */
+}
+/* テーブル内のボタンは少し小さくして行幅を抑える */
+.cell-actions button {
+    padding: 4px 8px;
+    font-size: 0.9em;
+}
+
 .remeasure-alert {
     background-color: #fffacd;
     border: 1px solid #ffce56;

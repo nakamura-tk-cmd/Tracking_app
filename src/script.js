@@ -487,6 +487,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     function clearScaleOverlay() { scaleOverlay.innerHTML = ''; }
     
+    // ▼ 修正：HTMLの組み立てを1行（横並び）にするため、divクラスを変更 ▼
     function updateDataTable() {
         dataTableHead.innerHTML = '';
         const headRow = dataTableHead.insertRow();
@@ -528,10 +529,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     const y = scaleRatio ? ((origin.y - p.y)/scaleRatio).toFixed(4) : (origin.y - p.y).toFixed(1);
                     
                     cell.innerHTML = `
-                        <div>(${x}, ${y})</div>
-                        <div class="cell-actions">
-                            <button class="cell-remeasure-btn" data-time="${p.t}" data-id="${p.id}">再計測</button>
-                            <button class="cell-delete-btn" data-time="${p.t}" data-id="${p.id}">🗑️</button>
+                        <div class="data-cell-content">
+                            <span>(${x}, ${y})</span>
+                            <div class="cell-actions">
+                                <button class="cell-remeasure-btn" data-time="${p.t}" data-id="${p.id}">再計測</button>
+                                <button class="cell-delete-btn" data-time="${p.t}" data-id="${p.id}">🗑️</button>
+                            </div>
                         </div>
                     `;
                 } else { cell.textContent = "---"; }
