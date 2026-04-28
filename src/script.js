@@ -19,6 +19,9 @@ document.addEventListener('DOMContentLoaded', function() {
     let isOriginMode = false;
     let currentFile = null;
     let measuredFps = null;
+
+    // 精密な時刻管理用変数
+    let exactMediaTime = 0;
     
     // ========= HTML要素の取得 =========
     const fileInput = document.getElementById('video-input');
@@ -33,6 +36,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const eventShield = document.getElementById('event-shield');
     const debugOverlay = document.getElementById('debug-overlay');
     const intervalInput = document.getElementById('interval-input');
+    
+    // ▼ iPad対応用に追加したボタン ▼
+    const intervalMinusBtn = document.getElementById('interval-minus-btn');
+    const intervalPlusBtn = document.getElementById('interval-plus-btn');
+
     const downloadCsvBtn = document.getElementById('download-csv-btn');
     const clearDataBtn = document.getElementById('clear-data-btn');
     const dataModeRadios = document.querySelectorAll('input[name="data-mode"]');
@@ -50,8 +58,34 @@ document.addEventListener('DOMContentLoaded', function() {
     const fpsDisplay = document.getElementById('fps-display');
     const rewindBtn = document.getElementById('rewind-btn');
     
+    // ========= 表示中フレームの正確な時刻の監視 =========
+    if ('requestVideoFrameCallback' in HTMLVideoElement.prototype) {
+        const updateFrameMetadata = (now, metadata) => {
+            exactMediaTime = metadata.mediaTime;
+            videoPlayer.requestVideoFrameCallback(updateFrameMetadata);
+        };
+        videoPlayer.requestVideoFrameCallback(updateFrameMetadata);
+    }
+
     // ========= イベントリスナーの設定 =========
-    
+
+    // ▼ iPad対応用の「-」「+」ボタンの処理 ▼
+    if (intervalMinusBtn) {
+        intervalMinusBtn.addEventListener('click', function() {
+            let val = parseInt(intervalInput.value, 10) || 1;
+            if (val > 1) {
+                intervalInput.value = val - 1;
+            }
+        });
+    }
+
+    if (intervalPlusBtn) {
+        intervalPlusBtn.addEventListener('click', function() {
+            let val = parseInt(intervalInput.value, 10) || 1;
+            intervalInput.value = val + 1;
+        });
+    }
+
     setOriginBtn.addEventListener('click', function() {
         isOriginMode = true;
         alert("原点設定モードを開始します。\n座標系の原点としたい点を動画上でクリックしてください。");
@@ -84,7 +118,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (currentFile) {
             const sizeInMB = (currentFile.size / 1024 / 1024);
             if (videoPlayer.videoWidth > 1920 || sizeInMB > 100) {
-                videoWarning.textContent = '警告: 動画のサイズが大きいため、処理が遅くなる可能性があります。';
+                videoWarning.textContent = '警告: 動画のサイズが大きいため，処理が遅くなる可能性があります。';
             } else {
                 videoWarning.textContent = '';
             }
@@ -94,7 +128,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     videoPlayer.addEventListener('timeupdate', function() {
         const currentTime = videoPlayer.currentTime;
-        timeDisplay.textContent = `時間: ${currentTime.toFixed(3)} s / フレーム: ${Math.floor(currentTime * (measuredFps || FRAME_RATE))}`;
+        timeDisplay.textContent = `時間: ${currentTime.toFixed(4)} s / フレーム(推定): ${Math.floor(currentTime * (measuredFps || FRAME_RATE))}`;
         if (!isDragging) {
             seekBar.value = currentTime;
         }
@@ -161,21 +195,20 @@ document.addEventListener('DOMContentLoaded', function() {
             isUpdateMode = false;
             updateIndex = null;
             updateDataTable();
-            const message = "データを更新しました。\n\n[OK] を押すと、最新の計測時間に戻ります。\n[キャンセル] を押すと、この時間から続けて計測します。";
-            if (confirm(message)) {
+            if (confirm("データを更新しました。最新の計測時間に戻りますか？")) {
                 if (trackingData.length > 0) {
-                    const lastTime = trackingData[trackingData.length - 1].t;
-                    videoPlayer.currentTime = lastTime;
+                    videoPlayer.currentTime = trackingData[trackingData.length - 1].t;
                 }
             }
         } else {
-            const originalX = clickedX;
-            const originalY = clickedY;
-            if (originalX < 0 || originalY < 0 || originalX > videoPlayer.videoWidth || originalY > videoPlayer.videoHeight) { return; }
-            const time = videoPlayer.currentTime;
-            const point = { t: time, id: activeObjectId, x: originalX, y: originalY };
+            const time = (exactMediaTime > 0 && Math.abs(exactMediaTime - videoPlayer.currentTime) < 0.1) 
+                         ? exactMediaTime 
+                         : videoPlayer.currentTime;
+            
+            const point = { t: time, id: activeObjectId, x: clickedX, y: clickedY };
+            
             if (dataMode === 'overwrite') {
-                const existingIndex = trackingData.findIndex(p => p.t.toFixed(3) === time.toFixed(3) && p.id === activeObjectId);
+                const existingIndex = trackingData.findIndex(p => Math.abs(p.t - time) < 0.001 && p.id === activeObjectId);
                 if (existingIndex !== -1) {
                     trackingData[existingIndex] = point;
                 } else {
@@ -184,73 +217,117 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 trackingData.push(point);
             }
+            trackingData.sort((a, b) => a.t - b.t);
             updateDataTable();
+            
             const framesToAdvance = parseInt(intervalInput.value, 10) || 1;
             videoPlayer.currentTime += framesToAdvance / (measuredFps || FRAME_RATE);
         }
     });
 
-    eventShield.addEventListener('mousedown', function(event) { event.preventDefault(); isDragging = true; hasDragged = false; videoContainer.classList.add('dragging'); startMouseX = event.clientX; startMouseY = event.clientY; lastMouseX = event.clientX; lastMouseY = event.clientY; });
-    eventShield.addEventListener('mousemove', function(event) { if (isScalingMode && scalePoints.length === 1) { const p1 = scalePoints[0]; const rect = videoContainer.getBoundingClientRect(); const containerX = event.clientX - rect.left; const containerY = event.clientY - rect.top; const currentMousePoint = { x: (containerX - translateX) / scale, y: (containerY - translateY) / scale }; drawScaleLine(p1, currentMousePoint); } if (!isDragging) return; const dxFromStart = Math.abs(event.clientX - startMouseX); const dyFromStart = Math.abs(event.clientY - startMouseY); if (dxFromStart > DRAG_THRESHOLD || dyFromStart > DRAG_THRESHOLD) { hasDragged = true; } const dx = event.clientX - lastMouseX; const dy = event.clientY - lastMouseY; translateX += dx; translateY += dy; lastMouseX = event.clientX; lastMouseY = event.clientY; applyZoomPan(); });
-    eventShield.addEventListener('mouseleave', function() { isDragging = false; videoContainer.classList.remove('dragging'); });
-    eventShield.addEventListener('wheel', function(event) { event.preventDefault(); const rect = videoContainer.getBoundingClientRect(); const mouseX = event.clientX - rect.left; const mouseY = event.clientY - rect.top; const oldScale = scale; const zoomIntensity = 0.1; const delta = event.deltaY < 0 ? 1 : -1; scale *= (1 + delta * zoomIntensity); scale = Math.max(0.1, Math.min(scale, 10)); translateX = mouseX - (mouseX - translateX) * (scale / oldScale); translateY = mouseY - (mouseY - translateY) * (scale / oldScale); applyZoomPan(); }, { passive: false });
-    eventShield.addEventListener('click', function(event) { event.preventDefault(); event.stopPropagation(); }, true);
-    dataModeRadios.forEach(radio => { radio.addEventListener('change', function(event) { dataMode = event.target.value; }); });
-    clearDataBtn.addEventListener('click', function() { if (trackingData.length === 0) { return; } if (confirm("本当にすべてのデータを消去しますか？\nこの操作は元に戻せません。")) { trackingData = []; updateDataTable(); } });
-    fileInput.addEventListener('change', function(event) { const file = event.target.files[0]; if (!file) return; currentFile = file; const fileURL = URL.createObjectURL(file); videoPlayer.src = fileURL; const sizeInMB = (currentFile.size / 1024 / 1024).toFixed(2); videoSize.textContent = `ファイルサイズ: ${sizeInMB} MB`; videoInfoPanel.classList.remove('hidden'); fpsDisplay.textContent = ''; measuredFps = null; trackingData = []; objectCount = 1; objectCountSelector.value = 1; activeObjectId = 1; origin = { x: 0, y: 0 }; updateObjectTabs(); updateDataTable(); resetZoomPan(); });
-    playPauseBtn.addEventListener('click', function() { if (videoPlayer.paused) { videoPlayer.play(); playPauseBtn.textContent = '⏸'; } else { videoPlayer.pause(); playPauseBtn.textContent = '▶'; } });
-    frameForwardBtn.addEventListener('click', function() { videoPlayer.pause(); playPauseBtn.textContent = '▶'; videoPlayer.currentTime += 1 / (measuredFps || FRAME_RATE); });
-    frameBackBtn.addEventListener('click', function() { videoPlayer.pause(); playPauseBtn.textContent = '▶'; videoPlayer.currentTime -= 1 / (measuredFps || FRAME_RATE); });
-    downloadCsvBtn.addEventListener('click', function() { if (trackingData.length === 0) { alert('記録されたデータがありません。'); return; } let csvHeader = "Time (s)"; for (let i = 1; i <= objectCount; i++) { csvHeader += `,X${i} (${scaleRatio ? 'm' : 'px'}),Y${i} (${scaleRatio ? 'm' : 'px'})`; } csvHeader += "\n"; const wideData = transformDataToWide(); let csvRows = wideData.map(timeData => { let row = [timeData.time.toFixed(3)]; for (let j = 1; j <= objectCount; j++) { const objData = timeData[`obj${j}`]; if (objData) { const correctedX = objData.x - origin.x; const correctedY = origin.y - objData.y; if (scaleRatio) { row.push((correctedX / scaleRatio).toFixed(5)); row.push((correctedY / scaleRatio).toFixed(5)); } else { row.push(correctedX.toFixed(0)); row.push(correctedY.toFixed(0)); } } else { row.push(''); row.push(''); } } return row.join(','); }).join('\n'); const csvContent = csvHeader + csvRows; const bom = new Uint8Array([0xEF, 0xBB, 0xBF]); const blob = new Blob([bom, csvContent], { type: 'text/csv;charset=utf-8;' }); const link = document.createElement("a"); const url = URL.createObjectURL(blob); link.setAttribute("href", url); link.setAttribute("download", "tracking_data.csv"); link.style.visibility = 'hidden'; document.body.appendChild(link); link.click(); document.body.removeChild(link); });
-    dataTableBody.addEventListener('click', function(event) { const target = event.target.closest('button'); if (!target) return; if (target.classList.contains('cell-delete-btn')) { const timeToDelete = parseFloat(target.dataset.time); const idToDelete = parseInt(target.dataset.id, 10); const indexToDelete = trackingData.findIndex(p => Math.abs(p.t - timeToDelete) < 0.0001 && p.id === idToDelete); if (indexToDelete !== -1) { if (confirm(`時刻 ${timeToDelete.toFixed(3)}s の 物体${idToDelete} のデータを削除しますか？`)) { trackingData.splice(indexToDelete, 1); updateDataTable(); } } } if (target.classList.contains('cell-remeasure-btn')) { const timeToUpdate = parseFloat(target.dataset.time); const idToUpdate = parseInt(target.dataset.id, 10); const indexToUpdate = trackingData.findIndex(p => Math.abs(p.t - timeToUpdate) < 0.0001 && p.id === idToUpdate); if (indexToUpdate === -1) return; const pointToUpdate = trackingData[indexToUpdate]; isUpdateMode = true; updateIndex = indexToUpdate; videoPlayer.currentTime = pointToUpdate.t; videoPlayer.pause(); playPauseBtn.textContent = '▶'; activeObjectId = pointToUpdate.id; updateObjectTabs(); updateDataTable(); alert(`再計測モード：物体ID ${pointToUpdate.id}（${pointToUpdate.t.toFixed(3)}秒）\n動画上の正しい位置をクリックしてください。`); } });
+    eventShield.addEventListener('mousedown', function(event) { event.preventDefault(); isDragging = true; hasDragged = false; videoContainer.classList.add('dragging'); lastMouseX = event.clientX; lastMouseY = event.clientY; startMouseX = event.clientX; startMouseY = event.clientY; });
+    eventShield.addEventListener('mousemove', function(event) { if (isScalingMode && scalePoints.length === 1) { const p1 = scalePoints[0]; const rect = videoContainer.getBoundingClientRect(); const currentMousePoint = { x: (event.clientX - rect.left - translateX) / scale, y: (event.clientY - rect.top - translateY) / scale }; drawScaleLine(p1, currentMousePoint); } if (!isDragging) return; if (Math.abs(event.clientX - startMouseX) > DRAG_THRESHOLD || Math.abs(event.clientY - startMouseY) > DRAG_THRESHOLD) { hasDragged = true; } const dx = event.clientX - lastMouseX; const dy = event.clientY - lastMouseY; translateX += dx; translateY += dy; lastMouseX = event.clientX; lastMouseY = event.clientY; applyZoomPan(); });
+    eventShield.addEventListener('wheel', function(event) { event.preventDefault(); const rect = videoContainer.getBoundingClientRect(); const mouseX = event.clientX - rect.left; const mouseY = event.clientY - rect.top; const oldScale = scale; scale *= (event.deltaY < 0 ? 1.1 : 0.9); scale = Math.max(0.1, Math.min(scale, 10)); translateX = mouseX - (mouseX - translateX) * (scale / oldScale); translateY = mouseY - (mouseY - translateY) * (scale / oldScale); applyZoomPan(); }, { passive: false });
     
-    // ========= 関数定義 =========
-    function applyZoomPan() {videoPlayer.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;updateDebugOverlay();clearScaleOverlay();scalePoints.forEach(point => drawScalePoint(point));}
-    function resetZoomPan() {scale = 1;translateX = 0;translateY = 0;applyZoomPan();clearScaleOverlay();}
-    function updateDebugOverlay() {debugOverlay.textContent = `Scale: ${scale.toFixed(2)}, Translate: (${translateX.toFixed(0)}px, ${translateY.toFixed(0)}px)`;}
-    function drawScalePoint(videoPoint) {const svgX = videoPoint.x * scale + translateX;const svgY = videoPoint.y * scale + translateY;const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');circle.setAttribute('cx', svgX);circle.setAttribute('cy', svgY);circle.setAttribute('r', 5);circle.setAttribute('fill', 'red');circle.setAttribute('stroke', 'white');circle.setAttribute('stroke-width', 1);scaleOverlay.appendChild(circle);}
-    function drawScaleLine(videoP1, videoP2) {const svgP1_x = videoP1.x * scale + translateX;const svgP1_y = videoP1.y * scale + translateY;const svgP2_x = videoP2.x * scale + translateX;const svgP2_y = videoP2.y * scale + translateY;const existingLine = scaleOverlay.querySelector('line');if (existingLine) { existingLine.remove(); }const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');line.setAttribute('x1', svgP1_x);line.setAttribute('y1', svgP1_y);line.setAttribute('x2', svgP2_x);line.setAttribute('y2', svgP2_y);line.setAttribute('stroke', 'yellow');line.setAttribute('stroke-width', 2);line.setAttribute('stroke-dasharray', '5 5');scaleOverlay.appendChild(line);}
-    function clearScaleOverlay() {scaleOverlay.innerHTML = '';}
-    function transformDataToWide() {const wideData = new Map();trackingData.forEach(point => {const timeStr = point.t.toFixed(3);if (!wideData.has(timeStr)) {wideData.set(timeStr, { time: point.t });}wideData.get(timeStr)[`obj${point.id}`] = { x: point.x, y: point.y };});return Array.from(wideData.values()).sort((a, b) => a.time - b.time);}
-    function updateDataTable() {dataTableHead.innerHTML = '';const headerRow = dataTableHead.insertRow();headerRow.insertCell().textContent = '時間 (s)';for (let i = 1; i <= objectCount; i++) {const th = headerRow.insertCell();th.textContent = `物体${i} (X, Y) [${scaleRatio ? 'm' : 'px'}]`;th.classList.add(`object-${i}-col`);th.style.textAlign = 'center';}
-        const wideData = transformDataToWide();dataTableBody.innerHTML = '';for (let i = wideData.length - 1; i >= 0; i--) {const timeData = wideData[i];const row = dataTableBody.insertRow();if (isUpdateMode && trackingData[updateIndex]?.t.toFixed(3) === timeData.time.toFixed(3)) {row.classList.add('updating-row');}row.insertCell().textContent = timeData.time.toFixed(3);for (let j = 1; j <= objectCount; j++) {const cell = row.insertCell();cell.classList.add(`object-${j}-col`);const objData = timeData[`obj${j}`];if (objData) {const correctedX = objData.x - origin.x;const correctedY = origin.y - objData.y;let displayX, displayY;if (scaleRatio) {displayX = (correctedX / scaleRatio).toFixed(3);displayY = (correctedY / scaleRatio).toFixed(3);} else {displayX = correctedX.toFixed(0);displayY = correctedY.toFixed(0);}const cellContent = document.createElement('div');cellContent.className = 'data-cell-content';const coordSpan = document.createElement('span');coordSpan.textContent = `${displayX}, ${displayY}`;const remeasureBtn = document.createElement('button');remeasureBtn.className = 'cell-remeasure-btn';remeasureBtn.textContent = '🎯';remeasureBtn.title = 'このデータを再計測';remeasureBtn.dataset.time = timeData.time;remeasureBtn.dataset.id = j;const deleteBtn = document.createElement('button');deleteBtn.className = 'cell-delete-btn';deleteBtn.textContent = '🗑️';deleteBtn.title = 'このデータを削除';deleteBtn.dataset.time = timeData.time;deleteBtn.dataset.id = j;cellContent.appendChild(coordSpan);cellContent.appendChild(remeasureBtn);cellContent.appendChild(deleteBtn);cell.appendChild(cellContent);} else {cell.textContent = '---';}}}}
-    function updateObjectTabs() {objectTabsContainer.innerHTML = '';for (let i = 1; i <= objectCount; i++) {const tabLabel = document.createElement('label');tabLabel.className = 'object-tab';tabLabel.style.borderColor = OBJECT_COLORS[i-1];const radioInput = document.createElement('input');radioInput.type = 'radio';radioInput.name = 'object-tab';radioInput.value = i;if (i === activeObjectId) {radioInput.checked = true;tabLabel.classList.add('active');tabLabel.style.backgroundColor = OBJECT_COLORS[i-1];}
-        radioInput.addEventListener('change', function() {activeObjectId = parseInt(this.value, 10);updateObjectTabs();});tabLabel.appendChild(radioInput);tabLabel.appendChild(document.createTextNode(`物体 ${i}`));objectTabsContainer.appendChild(tabLabel);}}
-    function measureFps() {
-        if (!('requestVideoFrameCallback' in HTMLVideoElement.prototype)) {
-            fpsDisplay.textContent = ' (fps計測: 非対応ブラウザ)';
-            return;
-        }
-        const wasPaused = videoPlayer.paused;
-        if (wasPaused) { videoPlayer.play(); }
-        const timestamps = [];
-        let frameCount = 0;
-        const numberOfFramesToMeasure = 90;
-        fpsDisplay.textContent = ' (fps計測中...)';
-        const frameCallback = (now, metadata) => {
-            timestamps.push(metadata.mediaTime);
-            frameCount++;
-            if (frameCount < numberOfFramesToMeasure && videoPlayer.currentTime < videoPlayer.duration) {
-                videoPlayer.requestVideoFrameCallback(frameCallback);
-            } else {
-                if (wasPaused) { videoPlayer.pause(); playPauseBtn.textContent = '▶'; }
-                if (timestamps.length > 1) {
-                    const totalDuration = timestamps[timestamps.length - 1] - timestamps[0];
-                    const avgFrameDuration = totalDuration / (timestamps.length - 1);
-                    measuredFps = 1 / avgFrameDuration;
-                } else {
-                    measuredFps = null;
+    downloadCsvBtn.addEventListener('click', function() {
+        if (trackingData.length === 0) return;
+        let csv = "Time (s),Object ID,X (m),Y (m),Delta T (s),Velocity (m/s)\n";
+        for (let id = 1; id <= objectCount; id++) {
+            const objPoints = trackingData.filter(p => p.id === id).sort((a, b) => a.t - b.t);
+            objPoints.forEach((p, index) => {
+                const cx = p.x - origin.x;
+                const cy = origin.y - p.y;
+                let dt = "", vel = "";
+                if (index > 0) {
+                    const prev = objPoints[index - 1];
+                    dt = (p.t - prev.t).toFixed(6);
+                    if (scaleRatio && parseFloat(dt) > 0) {
+                        const d = Math.sqrt(Math.pow(p.x - prev.x, 2) + Math.pow(p.y - prev.y, 2)) / scaleRatio;
+                        vel = (d / parseFloat(dt)).toFixed(4);
+                    }
                 }
+                const xm = scaleRatio ? (cx / scaleRatio).toFixed(6) : cx.toFixed(1);
+                const ym = scaleRatio ? (cy / scaleRatio).toFixed(6) : cy.toFixed(1);
+                csv += `${p.t.toFixed(6)},${p.id},${xm},${ym},${dt},${vel}\n`;
+            });
+        }
+        const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csv], { type: 'text/csv' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = "analysis_data.csv";
+        a.click();
+    });
+
+    clearDataBtn.addEventListener('click', function() { if (confirm("全データを消去しますか？")) { trackingData = []; updateDataTable(); } });
+
+    // ========= 関数定義 =========
+    function applyZoomPan() { videoPlayer.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`; updateDebugOverlay(); clearScaleOverlay(); scalePoints.forEach(p => drawScalePoint(p)); }
+    function resetZoomPan() { scale = 1; translateX = 0; translateY = 0; applyZoomPan(); }
+    function updateDebugOverlay() { debugOverlay.textContent = `Zoom: ${scale.toFixed(2)}`; }
+    function drawScalePoint(p) { const svgP = { x: p.x * scale + translateX, y: p.y * scale + translateY }; const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle'); c.setAttribute('cx', svgP.x); c.setAttribute('cy', svgP.y); c.setAttribute('r', 5); c.setAttribute('fill', 'red'); scaleOverlay.appendChild(c); }
+    function drawScaleLine(p1, p2) { const svgP1 = { x: p1.x * scale + translateX, y: p1.y * scale + translateY }; const svgP2 = { x: p2.x * scale + translateX, y: p2.y * scale + translateY }; const l = document.createElementNS('http://www.w3.org/2000/svg', 'line'); l.setAttribute('x1', svgP1.x); l.setAttribute('y1', svgP1.y); l.setAttribute('x2', svgP2.x); l.setAttribute('y2', svgP2.y); l.setAttribute('stroke', 'yellow'); l.setAttribute('stroke-width', 2); scaleOverlay.appendChild(l); }
+    function clearScaleOverlay() { scaleOverlay.innerHTML = ''; }
+    
+    function updateDataTable() {
+        dataTableHead.innerHTML = '<tr><th>時間(s)</th><th>ID</th><th>座標(m)</th><th>Δt(s)</th><th>速度(m/s)</th><th>操作</th></tr>';
+        dataTableBody.innerHTML = '';
+        for (let id = 1; id <= objectCount; id++) {
+            const objPoints = trackingData.filter(p => p.id === id).sort((a, b) => a.t - b.t);
+            objPoints.forEach((p, index) => {
+                let dt = "---", vel = "---";
+                if (index > 0) {
+                    const prev = objPoints[index - 1];
+                    const diffT = p.t - prev.t;
+                    dt = diffT.toFixed(4);
+                    if (scaleRatio && diffT > 0) {
+                        const d = Math.sqrt(Math.pow(p.x - prev.x, 2) + Math.pow(p.y - prev.y, 2)) / scaleRatio;
+                        vel = (d / diffT).toFixed(3);
+                    }
+                }
+                const row = dataTableBody.insertRow();
+                row.insertCell().textContent = p.t.toFixed(4);
+                row.insertCell().textContent = p.id;
+                const x = scaleRatio ? ((p.x - origin.x)/scaleRatio).toFixed(4) : (p.x - origin.x).toFixed(1);
+                const y = scaleRatio ? ((origin.y - p.y)/scaleRatio).toFixed(4) : (origin.y - p.y).toFixed(1);
+                row.insertCell().textContent = `(${x}, ${y})`;
+                row.insertCell().textContent = dt;
+                row.insertCell().textContent = vel;
+                const opt = row.insertCell();
+                opt.innerHTML = `<button class="cell-remeasure-btn" data-time="${p.t}" data-id="${p.id}">🎯</button><button class="cell-delete-btn" data-time="${p.t}" data-id="${p.id}">🗑️</button>`;
+            });
+        }
+    }
+
+    function updateObjectTabs() {
+        objectTabsContainer.innerHTML = '';
+        for (let i = 1; i <= objectCount; i++) {
+            const btn = document.createElement('button');
+            btn.className = `object-tab ${i === activeObjectId ? 'active' : ''}`;
+            btn.textContent = `物体 ${i}`;
+            btn.style.borderBottom = `4px solid ${OBJECT_COLORS[i-1]}`;
+            btn.onclick = () => { activeObjectId = i; updateObjectTabs(); };
+            objectTabsContainer.appendChild(btn);
+        }
+    }
+
+    function measureFps() {
+        if (!videoPlayer.requestVideoFrameCallback) { fpsDisplay.textContent = "(fps計測非対応ブラウザ)"; return; }
+        const timestamps = [];
+        const callback = (now, metadata) => {
+            timestamps.push(metadata.mediaTime);
+            if (timestamps.length < 60) videoPlayer.requestVideoFrameCallback(callback);
+            else {
+                const avg = (timestamps[timestamps.length-1] - timestamps[0]) / (timestamps.length-1);
+                measuredFps = 1 / avg;
                 updateFpsDisplay();
-                videoPlayer.currentTime = 0;
             }
         };
-        videoPlayer.requestVideoFrameCallback(frameCallback);
+        videoPlayer.requestVideoFrameCallback(callback);
     }
-    function updateFpsDisplay() { if (measuredFps) { const timePerFrame = 1 / measuredFps; const framesInPointOneSec = 0.1 / timePerFrame; fpsDisplay.textContent = `(実測fps: ${measuredFps.toFixed(1)}    ,    1フレーム: ${timePerFrame.toFixed(3)}s    ,    0.1s≈${framesInPointOneSec.toFixed(1)}フレーム)`; } else { fpsDisplay.textContent = ' (fps計測失敗)'; } }
+    function updateFpsDisplay() {
+        fpsDisplay.textContent = `(実測fps: ${measuredFps.toFixed(1)}   ,   1フレーム: ${(1/measuredFps).toFixed(4)}s   ,   0.1s ≈ ${(0.1*measuredFps).toFixed(1)}フレーム)`;
+    }
 
-    // ========= 初期化処理 =========
-    updateDebugOverlay();
     updateObjectTabs();
     updateDataTable();
 });

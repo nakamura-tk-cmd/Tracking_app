@@ -1,70 +1,148 @@
-body {font-family: sans-serif; width: 90%; max-width: 900px; margin: 20px auto;}
-.panel {margin-top: 15px; padding: 15px; border: 1px solid #ccc; border-radius: 8px; background-color: #f9f9f9;}
-.manual {margin-bottom: 15px;}
-.manual summary {cursor: pointer; font-weight: bold;}
-.manual ol {margin-top: 10px;}
-#video-info-panel { margin-top: 15px; padding: 10px 20px; background-color: #f0f0f0; border-radius: 5px; }
-#video-info-panel.hidden {display: none;}
-#video-info-panel h4 { margin-top: 0; margin-bottom: 8px; }
-#video-info-panel p { margin: 4px 0; }
-.warning-text {color: #d93025; font-weight: bold;}
-.main-controls {display: flex; align-items: center; padding: 10px;}
-#seek-bar {flex-grow: 1; margin: 0 15px; cursor: pointer;}
-.main-controls button {font-size: 1.5em; padding: 0; width: 50px; height: 40px; line-height: 40px; flex-shrink: 0;}
-.settings-panel {display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 20px 30px;}
-.settings-group {display: flex; align-items: center; gap: 8px;}
-.interval-control { font-size: 1.2em; }
-.interval-control input[type="number"] { width: 80px; font-size: 1.5em; padding: 5px; text-align: center; }
-#set-origin-btn, #set-scale-btn { width: auto; padding: 8px 15px; font-size: 1em; height: auto; line-height: normal; }
-
-/* ▼▼▼ 物体数セレクタのスタイルを調整 ▼▼▼ */
-.object-count-selector {
-    font-size: 1.2em;
+body {
+    font-family: sans-serif;
+    margin: 20px;
+    background-color: #f9f9f9;
 }
-.object-count-selector select {
-    font-size: 1.5em; /* プルダウンメニューのフォントを大きくする */
-    padding: 5px;
+h1 {
+    color: #333;
 }
-/* ▲▲▲ ここまで調整 ▲▲▲ */
-
-/* ▼▼▼ 物体タブのスタイルを調整 ▼▼▼ */
-.object-tab {
-    padding: 5px 12px;  /* パディングを少し詰めてコンパクトに */
-    margin: 0 5px;
+.panel {
+    background: #fff;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 15px;
+}
+.hidden {
+    display: none !important;
+}
+.warning-text {
+    color: red;
+    font-weight: bold;
+}
+#video-container {
+    position: relative;
+    display: inline-block;
     border: 1px solid #ccc;
-    border-radius: 5px;
-    cursor: pointer;
-    background-color: #fff;
-    transition: all 0.2s;
-    font-size: 1.2em; /* フォントサイズを少し小さくする */
+    background-color: #000;
+    overflow: hidden;
+    margin-bottom: 15px;
+    max-width: 100%;
 }
-/* ▲▲▲ ここまで調整 ▲▲▲ */
+#video-player {
+    display: block;
+    max-width: 100%;
+    transform-origin: 0 0;
+}
+#event-shield {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    cursor: crosshair;
+    z-index: 10;
+}
+#scale-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 5;
+}
+#debug-overlay {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    color: lime;
+    background: rgba(0,0,0,0.5);
+    padding: 2px 5px;
+    font-family: monospace;
+    pointer-events: none;
+    z-index: 20;
+}
+.main-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+#seek-bar {
+    flex-grow: 1;
+}
+.info-display {
+    margin: 10px 0;
+    font-weight: bold;
+}
+.info-display span {
+    margin-right: 20px;
+}
+.settings-panel {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    align-items: center;
+}
+.settings-group {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+button {
+    padding: 5px 10px;
+    cursor: pointer;
+}
+.data-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+    margin-top: 10px;
+}
+th, td {
+    padding: 8px;
+    text-align: center;
+}
+th {
+    background-color: #eee;
+}
+.updating-row {
+    background-color: #fffacd;
+}
+.object-tab {
+    padding: 5px 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background-color: #fff;
+    cursor: pointer;
+}
+.object-tab.active {
+    font-weight: bold;
+}
 
-.object-tab.active {font-weight: bold; color: white; box-shadow: 0 0 5px rgba(0,0,0,0.3);}
-.object-tab input[type="radio"] {display: none;}
-.object-1-col { background-color: rgba(255, 99, 132, 0.1); }
-.object-2-col { background-color: rgba(54, 162, 235, 0.1); }
-.object-3-col { background-color: rgba(255, 206, 86, 0.1); }
-.object-4-col { background-color: rgba(75, 192, 192, 0.1); }
-#video-container {width: 100%; position: relative; background-color: black; border: 1px solid #ccc; overflow: hidden; height: 0; padding-top: 56.25%;}
-#video-container.dragging {cursor: grabbing;}
-#video-player {position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: block; transform-origin: 0 0;}
-#event-shield {position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 400; cursor: crosshair;}
-#debug-overlay {position: absolute; top: 10px; left: 10px; color: lime; background-color: rgba(0, 0, 0, 0.7); padding: 5px 10px; font-size: 14px; z-index: 1000; pointer-events: none;}
-#scale-overlay {position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 500;}
-#scale-overlay line {stroke: yellow; stroke-width: 2; stroke-dasharray: 5 5;}
-#scale-overlay circle {fill: red; stroke: white; stroke-width: 1;}
-.playback-buttons button {margin: 0 3px;}
-.info-display {text-align: center; margin-top: 10px; font-size: 1.1em; color: #333;}
-#scale-display, #fps-display {margin-left: 20px;}
-#fps-display {font-style: italic; color: #555;}
-.mode-control {background: none; border: none; padding: 0;}
-.data-header {display: flex; justify-content: space-between; align-items: center; margin-top: 15px; margin-bottom: 10px;}
-.data-header h2 {margin: 0;}
-.data-buttons button {margin-left: 10px;}
-#data-table {width: 100%; border-collapse: collapse; margin-top: 15px;}
-#data-table th, #data-table td {padding: 8px; text-align: right; vertical-align: middle;}
-.data-cell-content {display: flex; justify-content: flex-end; align-items: center;}
-.cell-delete-btn, .cell-remeasure-btn {background: none; border: none; cursor: pointer; padding: 0 5px; font-size: 1.2em; opacity: 0.2; transition: opacity 0.2s;}
-#data-table tr:hover .cell-delete-btn, #data-table tr:hover .cell-remeasure-btn {opacity: 1;}
-.updating-row {background-color: #fff3cd;}
+/* ▼ iPad等のためのスピナーボタン用スタイル ▼ */
+.spinner-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 18px;
+    font-weight: bold;
+    margin: 0 5px;
+    cursor: pointer;
+    background-color: #f0f0f0;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    vertical-align: middle;
+}
+.spinner-btn:active {
+    background-color: #d0d0d0;
+}
+#interval-input {
+    width: 60px;
+    text-align: center;
+    vertical-align: middle;
+}
