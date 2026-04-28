@@ -19,8 +19,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // タッチズーム用
     let initialPinchDist = null, initialPinchScale = 1;
     
-    // ▼ 追加：再計測キャンセル用の変数 ▼
-    let timeBeforeRemeasure = 0; // 再計測前の時間を保持
+    // 再計測キャンセル用の変数
+    let timeBeforeRemeasure = 0;
 
     // ========= HTML要素の取得 =========
     const fileInput = document.getElementById('video-input');
@@ -61,7 +61,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const fpsDisplay = document.getElementById('fps-display');
     const workspace = document.getElementById('workspace');
 
-    // ▼ 追加：再計測キャンセルUI ▼
+    // 再計測キャンセルUI
     const remeasureAlert = document.getElementById('remeasure-alert');
     const cancelRemeasureBtn = document.getElementById('cancel-remeasure-btn');
 
@@ -98,7 +98,6 @@ document.addEventListener('DOMContentLoaded', function() {
         resetZoomPan();
     });
 
-    // 2段ボタン処理
     rewindBtn.addEventListener('click', () => { videoPlayer.pause(); videoPlayer.currentTime = 0; });
     playBtn.addEventListener('click', () => { videoPlayer.play(); });
     pauseBtn.addEventListener('click', () => { videoPlayer.pause(); });
@@ -132,7 +131,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const resolution = `${videoPlayer.videoWidth} x ${videoPlayer.videoHeight}`;
         videoResolution.textContent = `解像度: ${resolution}`;
         
-        // ▼ 縦長動画の判定とレイアウト切替 ▼
         if (videoPlayer.videoHeight > videoPlayer.videoWidth) {
             workspace.classList.add('portrait');
         } else {
@@ -165,7 +163,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!isDragging) seekBar.value = currentTime;
     });
     
-    // iOS Safariで change イベントが発火しにくい現象への対策として input と change 両方を監視
     ['change', 'input'].forEach(evt => {
         objectCountSelector.addEventListener(evt, function(event) {
             objectCount = parseInt(event.target.value, 10);
@@ -226,7 +223,6 @@ document.addEventListener('DOMContentLoaded', function() {
             trackingData[updateIndex].x = clickedX;
             trackingData[updateIndex].y = clickedY;
             
-            // ▼ 修正：更新完了後、モードを解除しUIを非表示にする ▼
             isUpdateMode = false;
             updateIndex = null;
             remeasureAlert.classList.add('hidden');
@@ -267,6 +263,12 @@ document.addEventListener('DOMContentLoaded', function() {
         lastMouseX = e.clientX; lastMouseY = e.clientY;
     });
     eventShield.addEventListener('mousemove', function(e) {
+        if (isScalingMode && scalePoints.length === 1) { 
+            const p1 = scalePoints[0]; 
+            const rect = videoContainer.getBoundingClientRect(); 
+            const currentMousePoint = { x: (e.clientX - rect.left - translateX) / scale, y: (e.clientY - rect.top - translateY) / scale }; 
+            drawScaleLine(p1, currentMousePoint); 
+        }
         if (!isDragging) return;
         const dx = e.clientX - lastMouseX; const dy = e.clientY - lastMouseY;
         if (Math.abs(e.clientX - startMouseX) > DRAG_THRESHOLD || Math.abs(e.clientY - startMouseY) > DRAG_THRESHOLD) {
@@ -309,6 +311,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     eventShield.addEventListener('touchmove', function(e) {
         e.preventDefault();
+        if (isScalingMode && scalePoints.length === 1 && e.touches.length === 1) {
+            const p1 = scalePoints[0]; 
+            const rect = videoContainer.getBoundingClientRect(); 
+            const currentMousePoint = { x: (e.touches[0].clientX - rect.left - translateX) / scale, y: (e.touches[0].clientY - rect.top - translateY) / scale }; 
+            drawScaleLine(p1, currentMousePoint);
+        }
         if (e.touches.length === 2 && initialPinchDist) {
             const dx = e.touches[0].clientX - e.touches[1].clientX;
             const dy = e.touches[0].clientY - e.touches[1].clientY;
@@ -381,7 +389,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     clearDataBtn.addEventListener('click', function() { if (confirm("全データを消去しますか？")) { trackingData = []; updateDataTable(); } });
 
-    // ▼ テーブル内の削除・再計測ボタン処理 ▼
     dataTableBody.addEventListener('click', function(event) {
         const target = event.target.closest('button');
         if (!target) return;
@@ -396,35 +403,26 @@ document.addEventListener('DOMContentLoaded', function() {
                 updateDataTable();
             }
         } else if (target.classList.contains('cell-remeasure-btn')) {
-            // ▼ 修正：再計測モードの開始処理 ▼
             isUpdateMode = true;
             updateIndex = index;
             
-            timeBeforeRemeasure = videoPlayer.currentTime; // 現在の時間を保存
-            videoPlayer.currentTime = time; // 計測点の時間へ移動
+            timeBeforeRemeasure = videoPlayer.currentTime; 
+            videoPlayer.currentTime = time; 
             videoPlayer.pause();
             
             activeObjectId = id;
             
-            // ▼ アラートの代わりにキャンセルUIを表示し、テーブルを更新 ▼
             remeasureAlert.classList.remove('hidden');
             updateObjectTabs();
             updateDataTable(); 
         }
     });
 
-    // ▼ 追加：再計測キャンセルのイベント処理 ▼
     cancelRemeasureBtn.addEventListener('click', function() {
         if (!isUpdateMode) return;
-        
-        // モードを解除
         isUpdateMode = false;
         updateIndex = null;
-        
-        // 元の時間に戻す
         videoPlayer.currentTime = timeBeforeRemeasure;
-        
-        // UIを非表示にし、テーブル（ハイライト）を更新
         remeasureAlert.classList.add('hidden');
         updateDataTable();
     });
@@ -433,11 +431,37 @@ document.addEventListener('DOMContentLoaded', function() {
     function applyZoomPan() { videoPlayer.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`; updateDebugOverlay(); clearScaleOverlay(); scalePoints.forEach(p => drawScalePoint(p)); }
     function resetZoomPan() { scale = 1; translateX = 0; translateY = 0; applyZoomPan(); }
     function updateDebugOverlay() { debugOverlay.textContent = `Zoom: ${scale.toFixed(2)}`; }
-    function drawScalePoint(p) { const svgP = { x: p.x * scale + translateX, y: p.y * scale + translateY }; const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle'); c.setAttribute('cx', svgP.x); c.setAttribute('cy', svgP.y); c.setAttribute('r', 5); c.setAttribute('fill', 'red'); scaleOverlay.appendChild(c); }
-    function drawScaleLine(p1, p2) { const svgP1 = { x: p1.x * scale + translateX, y: p1.y * scale + translateY }; const svgP2 = { x: p2.x * scale + translateX, y: p2.y * scale + translateY }; const l = document.createElementNS('http://www.w3.org/2000/svg', 'line'); l.setAttribute('x1', svgP1.x); l.setAttribute('y1', svgP1.y); l.setAttribute('x2', svgP2.x); l.setAttribute('y2', svgP2.y); l.setAttribute('stroke', 'yellow'); l.setAttribute('stroke-width', 2); scaleOverlay.appendChild(l); }
+    
+    function drawScalePoint(p) { 
+        const svgP = { x: p.x * scale + translateX, y: p.y * scale + translateY }; 
+        const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle'); 
+        c.setAttribute('cx', svgP.x); c.setAttribute('cy', svgP.y); c.setAttribute('r', 5); c.setAttribute('fill', 'red'); 
+        scaleOverlay.appendChild(c); 
+    }
+    
+    // ▼ 修正：古い線を消去し、点線で描画するように変更 ▼
+    function drawScaleLine(p1, p2) { 
+        // 既存の線を削除（軌跡が残らないようにする）
+        const existingLine = scaleOverlay.querySelector('line');
+        if (existingLine) {
+            existingLine.remove();
+        }
+        
+        const svgP1 = { x: p1.x * scale + translateX, y: p1.y * scale + translateY }; 
+        const svgP2 = { x: p2.x * scale + translateX, y: p2.y * scale + translateY }; 
+        const l = document.createElementNS('http://www.w3.org/2000/svg', 'line'); 
+        l.setAttribute('x1', svgP1.x); 
+        l.setAttribute('y1', svgP1.y); 
+        l.setAttribute('x2', svgP2.x); 
+        l.setAttribute('y2', svgP2.y); 
+        l.setAttribute('stroke', 'yellow'); 
+        l.setAttribute('stroke-width', 2); 
+        l.setAttribute('stroke-dasharray', '5 5'); // 点線にする
+        scaleOverlay.appendChild(l); 
+    }
+    
     function clearScaleOverlay() { scaleOverlay.innerHTML = ''; }
     
-    // ▼ テーブル描画の修正：文字「再計測」にする ▼
     function updateDataTable() {
         dataTableHead.innerHTML = '';
         const headRow = dataTableHead.insertRow();
@@ -520,6 +544,7 @@ document.addEventListener('DOMContentLoaded', function() {
         fpsDisplay.textContent = `(実測fps: ${measuredFps.toFixed(1)}   ,   1フレーム: ${(1/measuredFps).toFixed(4)}s   ,   0.1s ≈ ${(0.1*measuredFps).toFixed(1)}フレーム)`;
     }
 
+    // 初期化処理
     updateObjectTabs();
     updateDataTable();
 });
