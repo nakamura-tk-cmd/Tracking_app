@@ -28,9 +28,9 @@ h1 {
     gap: 15px;
     margin-bottom: 15px;
 }
-/* 縦長動画が読み込まれた時にJavaScriptでこのクラスが付与されます */
+/* ▼ 修正：縦長動画（Portrait）のとき、操作パネルを左側に配置 ▼ */
 .workspace.portrait {
-    flex-direction: row;
+    flex-direction: row-reverse; /* 左右反転：ボタン(左) → 動画(右) */
     align-items: stretch;
 }
 
@@ -40,7 +40,6 @@ h1 {
     background-color: #000;
     overflow: hidden;
     max-width: 100%;
-    /* 縦長動画の際に画面からはみ出さないための制限 */
     max-height: 80vh; 
 }
 #video-player {
@@ -57,7 +56,6 @@ h1 {
     height: 100%;
     cursor: crosshair;
     z-index: 10;
-    /* iPadのブラウザ由来のズームを抑止 */
     touch-action: none; 
 }
 #scale-overlay {
@@ -81,7 +79,7 @@ h1 {
     z-index: 20;
 }
 
-/* ▼ 操作ボタンエリア（スライダーの長さを確保） ▼ */
+/* ▼ 操作ボタンエリア ▼ */
 .main-controls-container {
     display: flex;
     flex-direction: column;
@@ -108,7 +106,7 @@ h1 {
     cursor: pointer;
 }
 
-/* ▼ 縦長動画（Portrait）時のUI上書き設定 ▼ */
+/* ▼ 修正：縦長動画（Portrait）時のUI上書き設定 ▼ */
 .workspace.portrait .main-controls-container {
     flex-direction: row;
 }
@@ -120,14 +118,24 @@ h1 {
 .workspace.portrait .main-controls-row2 {
     flex-direction: column;
 }
+
+/* ▼ 修正：1段目と2段目のボタンの間にすき間と線を追加 ▼ */
+.workspace.portrait .main-controls-row1 {
+    margin-bottom: 15px;
+    border-bottom: 2px solid #ccc;
+    padding-bottom: 15px;
+}
+
 .workspace.portrait .main-controls-row3 {
     width: 40px;
     height: 100%;
     padding: 0 10px;
 }
+/* ▼ 修正：縦型スライダーの方向を反転（スタートが上、終わりが下） ▼ */
 .workspace.portrait #seek-bar {
     -webkit-appearance: slider-vertical; /* 縦型スライダー */
-    writing-mode: bt-lr;
+    writing-mode: bt-lr; /* 内部的な値は下から上へ */
+    transform: rotate(180deg); /* CSSで180度回転させて、見た目の上下を反転 */
     width: 100%;
     height: 100%;
     min-height: 400px;
@@ -193,6 +201,23 @@ th {
 }
 .cell-actions {
     margin-top: 5px;
+}
+/* 再計測モード用のキャンセルUI */
+.remeasure-alert {
+    background-color: #fffacd;
+    border: 1px solid #ffce56;
+    padding: 10px;
+    border-radius: 4px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.cancel-btn {
+    background-color: #ffcccc;
+}
+.cancel-btn:hover {
+    background-color: #ffb3b3;
 }
 
 /* ▼ フォントサイズ拡大設定 ▼ */

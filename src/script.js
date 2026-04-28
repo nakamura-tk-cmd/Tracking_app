@@ -16,10 +16,12 @@ document.addEventListener('DOMContentLoaded', function() {
     let currentFile = null, measuredFps = null;
     let exactMediaTime = 0, isCallbackRegistered = false;
 
-    // タッチズーム用変数
-    let initialPinchDist = null;
-    let initialPinchScale = 1;
+    // タッチズーム用
+    let initialPinchDist = null, initialPinchScale = 1;
     
+    // ▼ 追加：再計測キャンセル用の変数 ▼
+    let timeBeforeRemeasure = 0; // 再計測前の時間を保持
+
     // ========= HTML要素の取得 =========
     const fileInput = document.getElementById('video-input');
     const videoPlayer = document.getElementById('video-player');
@@ -59,9 +61,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const fpsDisplay = document.getElementById('fps-display');
     const workspace = document.getElementById('workspace');
 
+    // ▼ 追加：再計測キャンセルUI ▼
+    const remeasureAlert = document.getElementById('remeasure-alert');
+    const cancelRemeasureBtn = document.getElementById('cancel-remeasure-btn');
+
     // ========= イベントリスナーの設定 =========
 
-    // iPad対応用の「-」「+」ボタン
     if (intervalMinusBtn && intervalInput) {
         intervalMinusBtn.addEventListener('click', function(e) {
             e.preventDefault();
@@ -160,7 +165,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!isDragging) seekBar.value = currentTime;
     });
     
-    // iOS Safariでchangeイベントが発火しにくい現象への対策として、inputとchange両方を監視
+    // iOS Safariで change イベントが発火しにくい現象への対策として input と change 両方を監視
     ['change', 'input'].forEach(evt => {
         objectCountSelector.addEventListener(evt, function(event) {
             objectCount = parseInt(event.target.value, 10);
@@ -170,11 +175,10 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // ========= マウス＆タッチの統合処理（iPadピンチズーム対応） =========
+    // ========= マウス＆タッチの統合処理 =========
 
-    // 実際の座標登録ロジック
     function handleInteraction(clientX, clientY) {
-        if (!videoPlayer.paused) return; // 再生中は記録しない
+        if (!videoPlayer.paused) return; 
 
         const rect = videoContainer.getBoundingClientRect();
         const containerX = clientX - rect.left;
@@ -221,8 +225,12 @@ document.addEventListener('DOMContentLoaded', function() {
         if (isUpdateMode) {
             trackingData[updateIndex].x = clickedX;
             trackingData[updateIndex].y = clickedY;
+            
+            // ▼ 修正：更新完了後、モードを解除しUIを非表示にする ▼
             isUpdateMode = false;
             updateIndex = null;
+            remeasureAlert.classList.add('hidden');
+            
             updateDataTable();
             if (confirm("データを更新しました。最新の計測時間に戻りますか？")) {
                 if (trackingData.length > 0) videoPlayer.currentTime = trackingData[trackingData.length - 1].t;
@@ -230,7 +238,6 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        // 通常のデータ記録
         const time = (exactMediaTime > 0 && Math.abs(exactMediaTime - videoPlayer.currentTime) < 0.1) 
                      ? exactMediaTime : videoPlayer.currentTime;
         
@@ -247,7 +254,6 @@ document.addEventListener('DOMContentLoaded', function() {
             trackingData.push(point);
         }
         
-        // 時間順にソート
         trackingData.sort((a, b) => a.t - b.t);
         updateDataTable();
         
@@ -255,10 +261,8 @@ document.addEventListener('DOMContentLoaded', function() {
         videoPlayer.currentTime += framesToAdvance / (measuredFps || FRAME_RATE);
     }
 
-    // 1. マウスイベント
     eventShield.addEventListener('mousedown', function(e) {
-        e.preventDefault();
-        isDragging = true; hasDragged = false;
+        e.preventDefault(); isDragging = true; hasDragged = false;
         startMouseX = e.clientX; startMouseY = e.clientY;
         lastMouseX = e.clientX; lastMouseY = e.clientY;
     });
@@ -274,9 +278,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     eventShield.addEventListener('mouseup', function(e) {
         isDragging = false;
-        if (!hasDragged && videoPlayer.paused) {
-            handleInteraction(e.clientX, e.clientY);
-        }
+        if (!hasDragged && videoPlayer.paused) { handleInteraction(e.clientX, e.clientY); }
     });
     eventShield.addEventListener('wheel', function(e) {
         e.preventDefault();
@@ -290,9 +292,8 @@ document.addEventListener('DOMContentLoaded', function() {
         applyZoomPan();
     }, { passive: false });
 
-    // 2. タッチイベント（iPadピンチ対応）
     eventShield.addEventListener('touchstart', function(e) {
-        e.preventDefault(); // マウスイベントの重複発火を防止
+        e.preventDefault(); 
         if (e.touches.length === 2) {
             const dx = e.touches[0].clientX - e.touches[1].clientX;
             const dy = e.touches[0].clientY - e.touches[1].clientY;
@@ -314,7 +315,6 @@ document.addEventListener('DOMContentLoaded', function() {
             const dist = Math.sqrt(dx*dx + dy*dy);
             scale = initialPinchScale * (dist / initialPinchDist);
             scale = Math.max(0.1, Math.min(scale, 10));
-            // 簡易的に中心点ではなく、現在のtranslateを維持したまま拡大
             applyZoomPan();
         } else if (e.touches.length === 1 && isDragging) {
             const dx = e.touches[0].clientX - lastMouseX;
@@ -333,21 +333,14 @@ document.addEventListener('DOMContentLoaded', function() {
         e.preventDefault();
         if (e.touches.length === 0) {
             if (isDragging && !hasDragged && videoPlayer.paused) {
-                // タップ（クリック）と判定
                 handleInteraction(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
             }
-            isDragging = false;
-            initialPinchDist = null;
+            isDragging = false; initialPinchDist = null;
         }
     }, { passive: false });
 
-
-    // ▼ CSV出力：生徒向けに時間・X・Yのみを出力するよう整理 ▼
     downloadCsvBtn.addEventListener('click', function() {
-        if (trackingData.length === 0) {
-            alert('記録されたデータがありません。');
-            return;
-        }
+        if (trackingData.length === 0) { alert('記録されたデータがありません。'); return; }
         
         let csv = "Time (s)";
         for (let i = 1; i <= objectCount; i++) {
@@ -355,7 +348,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         csv += "\n";
 
-        // 同じ時間を1行にまとめるためのマップ処理
         let timeMap = new Map();
         trackingData.forEach(p => {
             let tStr = p.t.toFixed(4);
@@ -375,9 +367,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     const xm = scaleRatio ? (cx / scaleRatio).toFixed(5) : cx.toFixed(1);
                     const ym = scaleRatio ? (cy / scaleRatio).toFixed(5) : cy.toFixed(1);
                     csv += `,${xm},${ym}`;
-                } else {
-                    csv += `,,`; // データがない場合は空白
-                }
+                } else { csv += `,,`; }
             }
             csv += "\n";
         });
@@ -391,6 +381,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     clearDataBtn.addEventListener('click', function() { if (confirm("全データを消去しますか？")) { trackingData = []; updateDataTable(); } });
 
+    // ▼ テーブル内の削除・再計測ボタン処理 ▼
     dataTableBody.addEventListener('click', function(event) {
         const target = event.target.closest('button');
         if (!target) return;
@@ -405,15 +396,37 @@ document.addEventListener('DOMContentLoaded', function() {
                 updateDataTable();
             }
         } else if (target.classList.contains('cell-remeasure-btn')) {
+            // ▼ 修正：再計測モードの開始処理 ▼
             isUpdateMode = true;
             updateIndex = index;
-            videoPlayer.currentTime = time;
+            
+            timeBeforeRemeasure = videoPlayer.currentTime; // 現在の時間を保存
+            videoPlayer.currentTime = time; // 計測点の時間へ移動
             videoPlayer.pause();
+            
             activeObjectId = id;
+            
+            // ▼ アラートの代わりにキャンセルUIを表示し、テーブルを更新 ▼
+            remeasureAlert.classList.remove('hidden');
             updateObjectTabs();
-            updateDataTable();
-            alert("再計測モードです。\n動画上の正しい位置をクリックしてください。");
+            updateDataTable(); 
         }
+    });
+
+    // ▼ 追加：再計測キャンセルのイベント処理 ▼
+    cancelRemeasureBtn.addEventListener('click', function() {
+        if (!isUpdateMode) return;
+        
+        // モードを解除
+        isUpdateMode = false;
+        updateIndex = null;
+        
+        // 元の時間に戻す
+        videoPlayer.currentTime = timeBeforeRemeasure;
+        
+        // UIを非表示にし、テーブル（ハイライト）を更新
+        remeasureAlert.classList.add('hidden');
+        updateDataTable();
     });
 
     // ========= 関数定義 =========
@@ -424,7 +437,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function drawScaleLine(p1, p2) { const svgP1 = { x: p1.x * scale + translateX, y: p1.y * scale + translateY }; const svgP2 = { x: p2.x * scale + translateX, y: p2.y * scale + translateY }; const l = document.createElementNS('http://www.w3.org/2000/svg', 'line'); l.setAttribute('x1', svgP1.x); l.setAttribute('y1', svgP1.y); l.setAttribute('x2', svgP2.x); l.setAttribute('y2', svgP2.y); l.setAttribute('stroke', 'yellow'); l.setAttribute('stroke-width', 2); scaleOverlay.appendChild(l); }
     function clearScaleOverlay() { scaleOverlay.innerHTML = ''; }
     
-    // ▼ データテーブル：同じ時間を横並びにし、情報をシンプルに整理 ▼
+    // ▼ テーブル描画の修正：文字「再計測」にする ▼
     function updateDataTable() {
         dataTableHead.innerHTML = '';
         const headRow = dataTableHead.insertRow();
@@ -450,7 +463,6 @@ document.addEventListener('DOMContentLoaded', function() {
         sortedTimes.forEach(rowObj => {
             const row = dataTableBody.insertRow();
             
-            // 更新中の行をハイライト
             if (isUpdateMode && updateIndex !== null && Math.abs(trackingData[updateIndex].t - rowObj.time) < 0.001) {
                 row.classList.add('updating-row');
             }
@@ -464,18 +476,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     const cx = p.x - origin.x;
                     const cy = origin.y - p.y;
                     const x = scaleRatio ? (cx / scaleRatio).toFixed(4) : cx.toFixed(1);
-                    const y = scaleRatio ? (cy / scaleRatio).toFixed(4) : cy.toFixed(1);
+                    const y = scaleRatio ? ((origin.y - p.y)/scaleRatio).toFixed(4) : (origin.y - p.y).toFixed(1);
                     
                     cell.innerHTML = `
                         <div>(${x}, ${y})</div>
                         <div class="cell-actions">
-                            <button class="cell-remeasure-btn" data-time="${p.t}" data-id="${p.id}">🎯</button>
+                            <button class="cell-remeasure-btn" data-time="${p.t}" data-id="${p.id}">再計測</button>
                             <button class="cell-delete-btn" data-time="${p.t}" data-id="${p.id}">🗑️</button>
                         </div>
                     `;
-                } else {
-                    cell.textContent = "---";
-                }
+                } else { cell.textContent = "---"; }
             }
         });
     }
@@ -487,7 +497,6 @@ document.addEventListener('DOMContentLoaded', function() {
             btn.className = `object-tab ${i === activeObjectId ? 'active' : ''}`;
             btn.textContent = `物体 ${i}`;
             btn.style.borderBottom = `4px solid ${OBJECT_COLORS[i-1]}`;
-            // 選択されているタブの色を少し変える処理はCSSで対応
             btn.onclick = () => { activeObjectId = i; updateObjectTabs(); };
             objectTabsContainer.appendChild(btn);
         }
@@ -511,7 +520,6 @@ document.addEventListener('DOMContentLoaded', function() {
         fpsDisplay.textContent = `(実測fps: ${measuredFps.toFixed(1)}   ,   1フレーム: ${(1/measuredFps).toFixed(4)}s   ,   0.1s ≈ ${(0.1*measuredFps).toFixed(1)}フレーム)`;
     }
 
-    // 初期化処理
     updateObjectTabs();
     updateDataTable();
 });
