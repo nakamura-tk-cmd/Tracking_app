@@ -29,15 +29,13 @@ h1 {
     margin-bottom: 15px;
 }
 
-/* ▼ 修正：縦長動画のとき、通常の横並び（左から右）にする ▼ */
 .workspace.portrait {
-    flex-direction: row; /* パネル(左) → 動画(右) の順になります */
+    flex-direction: row; 
     align-items: stretch;
 }
 
-/* ▼ 修正：動画コンテナが右側に来るように order を設定 ▼ */
 .workspace.portrait #video-container {
-    order: 2; 
+    order: 3; 
 }
 
 #video-container {
@@ -45,7 +43,10 @@ h1 {
     border: 1px solid #ccc;
     background-color: #000;
     overflow: hidden;
-    max-width: 100%;
+    /* ▼ 修正：iPad等でタッチして上下スクロールできる「セーフゾーン」を両サイドに確保 ▼ */
+    max-width: calc(100% - 60px); 
+    margin: 0 30px; 
+    
     max-height: 80vh; 
     flex-grow: 1; 
 }
@@ -86,7 +87,7 @@ h1 {
     z-index: 20;
 }
 
-/* ▼ 操作パネル（横長動画のとき：スライダーが上、ボタンが下） ▼ */
+/* ▼ 操作パネル（横長動画のとき） ▼ */
 .main-controls-container {
     display: flex;
     flex-direction: column;
@@ -113,14 +114,12 @@ h1 {
     cursor: pointer;
 }
 
-/* ▼ 操作パネル（縦長動画のとき：ボタン群を一番左に、スライダーをその右に配置） ▼ */
+/* ▼ 操作パネル（縦長動画のとき） ▼ */
 .workspace.portrait .main-controls-container {
-    /* HTMLの構造は「スライダー(上)→ボタン(下)」なので、row-reverseで「ボタン(左)→スライダー(右)」にする */
-    flex-direction: row-reverse; 
+    flex-direction: row; 
     align-items: center;
     min-width: min-content; 
     padding: 10px; 
-    /* 操作パネル全体を一番左（動画の左側）に配置 */
     order: 1; 
 }
 
@@ -128,6 +127,7 @@ h1 {
     flex-direction: column;
     justify-content: center;
     gap: 15px; 
+    order: 1; 
 }
 .workspace.portrait .main-controls-row1, 
 .workspace.portrait .main-controls-row2 {
@@ -143,6 +143,7 @@ h1 {
     width: 40px;
     height: 100%;
     padding: 0 10px; 
+    order: 2; 
 }
 .workspace.portrait #seek-bar {
     -webkit-appearance: slider-vertical;

@@ -21,7 +21,6 @@ document.addEventListener('DOMContentLoaded', function() {
     let lastPinchCenterX = null;
     let lastPinchCenterY = null;
 
-    // ▼ 追加：全体fps計測用の変数 ▼
     let fpsFrameCount = 0;
     let fpsFirstTime = null;
     let fpsLastTime = null;
@@ -150,7 +149,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
 
-        // ▼ 修正：動画読み込み時に全編自動再生とfps計測を開始 ▼
         fpsFrameCount = 0;
         fpsFirstTime = null;
         fpsLastTime = null;
@@ -164,13 +162,11 @@ document.addEventListener('DOMContentLoaded', function() {
             const updateFrameMetadata = (now, metadata) => {
                 exactMediaTime = metadata.mediaTime;
                 
-                // fps計測モードがONの時だけフレームを数える
                 if (isAutoPlayingForFps) {
                     if (fpsFirstTime === null) fpsFirstTime = metadata.mediaTime;
                     fpsLastTime = metadata.mediaTime;
                     fpsFrameCount++;
                     
-                    // 計測中の数値をリアルタイム表示
                     if (fpsLastTime > fpsFirstTime) {
                         measuredFps = fpsFrameCount / (fpsLastTime - fpsFirstTime);
                         fpsDisplay.textContent = `(fps計測中... ${measuredFps.toFixed(2)})`;
@@ -184,16 +180,14 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // ▼ 追加：動画の再生が最後まで終わった時の処理（fps計測完了＆巻き戻し） ▼
     videoPlayer.addEventListener('ended', function() {
         if (isAutoPlayingForFps) {
             isAutoPlayingForFps = false;
             updateFpsDisplay();
-            videoPlayer.currentTime = 0; // はじめに戻す
+            videoPlayer.currentTime = 0; 
         }
     });
 
-    // ▼ 追加：ユーザーが途中で一時停止やシークをした場合は計測を打ち切る安全装置 ▼
     videoPlayer.addEventListener('pause', function() {
         if (isAutoPlayingForFps && videoPlayer.currentTime < videoPlayer.duration) {
             isAutoPlayingForFps = false;
@@ -605,12 +599,12 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // ▼ 修正：動画全体をスキャンしてfpsを算出する処理 ▼
+    // ▼ 修正：fps計測エラー時はシンプルに表示 ▼
     function updateFpsDisplay() {
         if (measuredFps && measuredFps > 0) {
             fpsDisplay.textContent = `(実測fps: ${measuredFps.toFixed(2)}   ,   1フレーム: ${(1/measuredFps).toFixed(4)}s   ,   0.1s ≈ ${(0.1*measuredFps).toFixed(1)}フレーム)`;
         } else {
-            fpsDisplay.textContent = `(fps計測エラー: 初期設定 ${FRAME_RATE} fpsを使用します)`;
+            fpsDisplay.textContent = `(fps計測エラー)`;
         }
     }
 
