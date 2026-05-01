@@ -553,22 +553,43 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // ▼ 修正：バグの元となっていたマイナスFPSを防ぐ安全装置を追加 ▼
     function measureFps() {
         if (!videoPlayer.requestVideoFrameCallback) { fpsDisplay.textContent = "(fps計測非対応ブラウザ)"; return; }
         const timestamps = [];
         const callback = (now, metadata) => {
             timestamps.push(metadata.mediaTime);
-            if (timestamps.length < 60) videoPlayer.requestVideoFrameCallback(callback);
-            else {
-                const avg = (timestamps[timestamps.length-1] - timestamps[0]) / (timestamps.length-1);
-                measuredFps = 1 / avg;
+            if (timestamps.length < 60) {
+                videoPlayer.requestVideoFrameCallback(callback);
+            } else {
+                // 最後の時間と最初の時間の差分を計算
+                const diff = timestamps[timestamps.length-1] - timestamps[0];
+                
+                // 差分が少なすぎる場合や、マイナス（巻き戻し中）の場合は無効化してデフォルト値に頼る
+                if (Math.abs(diff) > 0.001) {
+                    // 確実にプラスの値になるように Math.abs (絶対値) を使用
+                    const avg = Math.abs(diff) / (timestamps.length-1);
+                    measuredFps = 1 / avg;
+                    
+                    // 例外的な値（1000fpsなど極端な数値）になった場合はリセット
+                    if (measuredFps > 120 || measuredFps < 1) {
+                        measuredFps = null; 
+                    }
+                } else {
+                    measuredFps = null;
+                }
                 updateFpsDisplay();
             }
         };
         videoPlayer.requestVideoFrameCallback(callback);
     }
+    
     function updateFpsDisplay() {
-        fpsDisplay.textContent = `(実測fps: ${measuredFps.toFixed(1)}   ,   1フレーム: ${(1/measuredFps).toFixed(4)}s   ,   0.1s ≈ ${(0.1*measuredFps).toFixed(1)}フレーム)`;
+        if (measuredFps) {
+            fpsDisplay.textContent = `(実測fps: ${measuredFps.toFixed(1)}   ,   1フレーム: ${(1/measuredFps).toFixed(4)}s   ,   0.1s ≈ ${(0.1*measuredFps).toFixed(1)}フレーム)`;
+        } else {
+            fpsDisplay.textContent = `(fps計測エラー: 初期設定 ${FRAME_RATE} fpsを使用します)`;
+        }
     }
 
     updateObjectTabs();
