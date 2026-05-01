@@ -21,6 +21,12 @@ document.addEventListener('DOMContentLoaded', function() {
     let lastPinchCenterX = null;
     let lastPinchCenterY = null;
 
+    // ▼ 追加：全体fps計測用の変数 ▼
+    let fpsFrameCount = 0;
+    let fpsFirstTime = null;
+    let fpsLastTime = null;
+    let isAutoPlayingForFps = false;
+
     // ========= HTML要素の取得 =========
     const fileInput = document.getElementById('video-input');
     const videoPlayer = document.getElementById('video-player');
@@ -143,15 +149,61 @@ document.addEventListener('DOMContentLoaded', function() {
                 videoWarning.textContent = '';
             }
         }
-        measureFps();
+
+        // ▼ 修正：動画読み込み時に全編自動再生とfps計測を開始 ▼
+        fpsFrameCount = 0;
+        fpsFirstTime = null;
+        fpsLastTime = null;
+        isAutoPlayingForFps = true;
+        measuredFps = null;
+        fpsDisplay.textContent = "(動画全体をスキャンしてfpsを計測します...)";
+        
+        videoPlayer.play();
 
         if ('requestVideoFrameCallback' in HTMLVideoElement.prototype && !isCallbackRegistered) {
             const updateFrameMetadata = (now, metadata) => {
                 exactMediaTime = metadata.mediaTime;
+                
+                // fps計測モードがONの時だけフレームを数える
+                if (isAutoPlayingForFps) {
+                    if (fpsFirstTime === null) fpsFirstTime = metadata.mediaTime;
+                    fpsLastTime = metadata.mediaTime;
+                    fpsFrameCount++;
+                    
+                    // 計測中の数値をリアルタイム表示
+                    if (fpsLastTime > fpsFirstTime) {
+                        measuredFps = fpsFrameCount / (fpsLastTime - fpsFirstTime);
+                        fpsDisplay.textContent = `(fps計測中... ${measuredFps.toFixed(2)})`;
+                    }
+                }
+                
                 videoPlayer.requestVideoFrameCallback(updateFrameMetadata);
             };
             videoPlayer.requestVideoFrameCallback(updateFrameMetadata);
             isCallbackRegistered = true;
+        }
+    });
+
+    // ▼ 追加：動画の再生が最後まで終わった時の処理（fps計測完了＆巻き戻し） ▼
+    videoPlayer.addEventListener('ended', function() {
+        if (isAutoPlayingForFps) {
+            isAutoPlayingForFps = false;
+            updateFpsDisplay();
+            videoPlayer.currentTime = 0; // はじめに戻す
+        }
+    });
+
+    // ▼ 追加：ユーザーが途中で一時停止やシークをした場合は計測を打ち切る安全装置 ▼
+    videoPlayer.addEventListener('pause', function() {
+        if (isAutoPlayingForFps && videoPlayer.currentTime < videoPlayer.duration) {
+            isAutoPlayingForFps = false;
+            updateFpsDisplay();
+        }
+    });
+    videoPlayer.addEventListener('seeked', function() {
+        if (isAutoPlayingForFps) {
+            isAutoPlayingForFps = false;
+            updateFpsDisplay();
         }
     });
 
@@ -553,40 +605,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // ▼ 修正：バグの元となっていたマイナスFPSを防ぐ安全装置を追加 ▼
-    function measureFps() {
-        if (!videoPlayer.requestVideoFrameCallback) { fpsDisplay.textContent = "(fps計測非対応ブラウザ)"; return; }
-        const timestamps = [];
-        const callback = (now, metadata) => {
-            timestamps.push(metadata.mediaTime);
-            if (timestamps.length < 60) {
-                videoPlayer.requestVideoFrameCallback(callback);
-            } else {
-                // 最後の時間と最初の時間の差分を計算
-                const diff = timestamps[timestamps.length-1] - timestamps[0];
-                
-                // 差分が少なすぎる場合や、マイナス（巻き戻し中）の場合は無効化してデフォルト値に頼る
-                if (Math.abs(diff) > 0.001) {
-                    // 確実にプラスの値になるように Math.abs (絶対値) を使用
-                    const avg = Math.abs(diff) / (timestamps.length-1);
-                    measuredFps = 1 / avg;
-                    
-                    // 例外的な値（1000fpsなど極端な数値）になった場合はリセット
-                    if (measuredFps > 120 || measuredFps < 1) {
-                        measuredFps = null; 
-                    }
-                } else {
-                    measuredFps = null;
-                }
-                updateFpsDisplay();
-            }
-        };
-        videoPlayer.requestVideoFrameCallback(callback);
-    }
-    
+    // ▼ 修正：動画全体をスキャンしてfpsを算出する処理 ▼
     function updateFpsDisplay() {
-        if (measuredFps) {
-            fpsDisplay.textContent = `(実測fps: ${measuredFps.toFixed(1)}   ,   1フレーム: ${(1/measuredFps).toFixed(4)}s   ,   0.1s ≈ ${(0.1*measuredFps).toFixed(1)}フレーム)`;
+        if (measuredFps && measuredFps > 0) {
+            fpsDisplay.textContent = `(実測fps: ${measuredFps.toFixed(2)}   ,   1フレーム: ${(1/measuredFps).toFixed(4)}s   ,   0.1s ≈ ${(0.1*measuredFps).toFixed(1)}フレーム)`;
         } else {
             fpsDisplay.textContent = `(fps計測エラー: 初期設定 ${FRAME_RATE} fpsを使用します)`;
         }

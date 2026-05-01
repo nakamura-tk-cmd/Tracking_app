@@ -13,12 +13,12 @@
     <details class="manual" open>
         <summary>【クリックで開閉】操作手順</summary>
         <ol>
-            <li><strong>動画の読み込み:</strong> 「ファイルを選択」より、解析対象の動画ファイルを指定します。</li>
+            <li><strong>動画の読み込み:</strong> 「ファイルを選択」より、解析対象の動画ファイルを指定します。（動画を読み込むと，自動で一度再生されます）</li>
             <li><strong>原点を設定:</strong> 「⌖ 原点設定」を押し、座標系の原点としたい点をクリックします。(この操作は任意です)</li>
             <li><strong>スケールを設定:</strong> 「📏 スケール設定」を押し、動画内で既知の長さを持つ物体の両端を順にクリック後、その距離をメートル単位[m]で入力します。</li>
-            <li><strong>フレーム数を設定:</strong> 「クリック時に進むフレーム数」に、1回のクリック操作で進めるコマ数を指定します。</li>
+            <li><strong>フレーム数を設定:</strong> 「クリック時に進むフレーム数 N」に、1回のクリック操作で進めるコマ数を指定します。</li>
             <li><strong>物体数を設定:</strong> 「追跡する物体の数」を選択し、計測したい「物体タブ」を選択します。</li>
-            <li><strong>計測を開始:</strong> 計測を開始するフレーム（コマ）で動画を一時停止し、物体をクリックします。クリックすると、その時刻と位置が記録され、指定したフレーム数だけ動画が進みます。<br>（※マウスのホイール操作や、タッチパネルでのピンチアウト・ピンチインなどで画像の拡大・縮小が可能です。拡大したままドラッグで画面を移動できます。）</li>
+            <li><strong>計測を開始:</strong> 計測を開始するフレーム（コマ）で動画を一時停止し、物体をクリックします。クリックすると、その時刻とクリックした位置が記録され、指定したフレーム数だけ動画が進みます。<br>（※マウスのホイール操作や、タッチパネルでのピンチアウト・ピンチインなどで画像の拡大・縮小が可能です。拡大したままドラッグで画面を移動できます。）</li>
             <li><strong>データを出力:</strong> 全ての計測完了後、「CSVダウンロード」ボタンでデータを保存します。</li>
         </ol>
     </details>
@@ -37,6 +37,20 @@
     </div>
 
     <hr>
+
+    <!-- ▼ 追加：動画の直前に配置する設定パネル ▼ -->
+    <div class="panel settings-panel">
+        <div class="settings-group">
+            <button id="set-origin-btn" title="原点設定">⌖ 原点設定</button>
+            <button id="set-scale-btn" title="スケール設定">📏 スケール設定</button>
+        </div>
+        <div class="settings-group interval-control">
+            <label for="interval-input">クリック時に進むフレーム数 N :</label>
+            <button type="button" id="interval-minus-btn" class="spinner-btn">-</button>
+            <input type="number" id="interval-input" value="1" min="1">
+            <button type="button" id="interval-plus-btn" class="spinner-btn">+</button>
+        </div>
+    </div>
 
     <div id="workspace" class="workspace">
         <div id="video-container">
@@ -73,17 +87,8 @@
         <span id="scale-display">スケール: 未設定</span>
     </div>
 
+    <!-- ▼ 修正：物体数と記録モードの設定は動画の後ろに残す ▼ -->
     <div class="panel settings-panel">
-        <div class="settings-group">
-            <button id="set-origin-btn" title="原点設定">⌖ 原点設定</button>
-            <button id="set-scale-btn" title="スケール設定">📏 スケール設定</button>
-        </div>
-        <div class="settings-group interval-control">
-            <label for="interval-input">クリック時に進むフレーム数 N :</label>
-            <button type="button" id="interval-minus-btn" class="spinner-btn">-</button>
-            <input type="number" id="interval-input" value="1" min="1">
-            <button type="button" id="interval-plus-btn" class="spinner-btn">+</button>
-        </div>
         <div class="settings-group object-count-selector">
             <label for="object-count">追跡する物体の数:</label>
             <select id="object-count">

@@ -29,9 +29,15 @@ h1 {
     margin-bottom: 15px;
 }
 
+/* ▼ 修正：縦長動画のとき、通常の横並び（左から右）にする ▼ */
 .workspace.portrait {
-    flex-direction: row-reverse; /* 右に動画、左にパネル */
+    flex-direction: row; /* パネル(左) → 動画(右) の順になります */
     align-items: stretch;
+}
+
+/* ▼ 修正：動画コンテナが右側に来るように order を設定 ▼ */
+.workspace.portrait #video-container {
+    order: 2; 
 }
 
 #video-container {
@@ -109,11 +115,13 @@ h1 {
 
 /* ▼ 操作パネル（縦長動画のとき：ボタン群を一番左に、スライダーをその右に配置） ▼ */
 .workspace.portrait .main-controls-container {
-    /* HTMLの構造は「スライダー(右)→ボタン(左)」となるよう row-reverse を指定 */
+    /* HTMLの構造は「スライダー(上)→ボタン(下)」なので、row-reverseで「ボタン(左)→スライダー(右)」にする */
     flex-direction: row-reverse; 
     align-items: center;
     min-width: min-content; 
     padding: 10px; 
+    /* 操作パネル全体を一番左（動画の左側）に配置 */
+    order: 1; 
 }
 
 .workspace.portrait .controls-buttons-wrap {
