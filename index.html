@@ -38,7 +38,6 @@
 
     <hr>
 
-    <!-- ▼ 追加：動画の直前に配置する設定パネル ▼ -->
     <div class="panel settings-panel">
         <div class="settings-group">
             <button id="set-origin-btn" title="原点設定">⌖ 原点設定</button>
@@ -72,11 +71,12 @@
                     <button id="pause-btn" title="停止">⏸ 停止</button>
                     <button id="go-end-btn" title="終わりまで進む">⏭ 終わり</button>
                 </div>
+                <!-- ▼ 修正：ボタンのテキストに「戻る」「進む」を追加 ▼ -->
                 <div class="main-controls-row2">
-                    <button id="step-back-n-btn" title="Nコマ戻る">⏪ Nコマ</button>
-                    <button id="frame-back-btn" title="1コマ戻る">◀ 1コマ</button>
-                    <button id="frame-forward-btn" title="1コマ進む">1コマ ▶</button>
-                    <button id="step-forward-n-btn" title="Nコマ進む">Nコマ ⏩</button>
+                    <button id="step-back-n-btn" title="Nコマ戻る">⏪ Nコマ戻る</button>
+                    <button id="frame-back-btn" title="1コマ戻る">◀ 1コマ戻る</button>
+                    <button id="frame-forward-btn" title="1コマ進む">1コマ進む ▶</button>
+                    <button id="step-forward-n-btn" title="Nコマ進む">Nコマ進む ⏩</button>
                 </div>
             </div>
         </div>
@@ -87,7 +87,6 @@
         <span id="scale-display">スケール: 未設定</span>
     </div>
 
-    <!-- ▼ 修正：物体数と記録モードの設定は動画の後ろに残す ▼ -->
     <div class="panel settings-panel">
         <div class="settings-group object-count-selector">
             <label for="object-count">追跡する物体の数:</label>
