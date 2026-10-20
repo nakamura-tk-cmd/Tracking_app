@@ -14,6 +14,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // ===================== 定数 =====================
     const COLORS = ['#e8445a', '#2f8fe0', '#e0a400', '#1fa89a'];
     const DEFAULT_FPS = 30;
+    // よく使われる fps（23.976, 29.97, 59.94 などは 24, 30, 60fps 撮影の実際の値）
+    const COMMON_FPS = [23.976, 24, 25, 29.97, 30, 48, 50, 59.94, 60, 119.88, 120, 239.76, 240];
     const TAP_SLOP = 8;          // これ以上動いたらタップではなくドラッグ
     const MAX_ZOOM = 20;
     const STORE_PREFIX = 'tracking-v2:';
@@ -24,7 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const $ = id => document.getElementById(id);
     const el = {
         fileInput: $('video-input'), info: $('video-info'), infoName: $('info-name'), infoRes: $('info-res'),
-        infoSize: $('info-size'), infoFrames: $('info-frames'), fpsInput: $('fps-input'), fpsSource: $('fps-source'),
+        infoSize: $('info-size'), infoFrames: $('info-frames'), fpsInput: $('fps-input'), fpsSource: $('fps-source'), fpsNominal: $('fps-nominal'),
         warning: $('video-warning'),
         restoreBanner: $('restore-banner'), restoreText: $('restore-text'), restoreYes: $('restore-yes'), restoreNo: $('restore-no'),
         workspace: $('workspace'), originBtn: $('origin-btn'), scaleBtn: $('scale-btn'), fitBtn: $('fit-btn'), trailCheck: $('trail-check'),
@@ -49,7 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
         loaded: false,
         file: null, fileKey: null, url: null,
         vw: 0, vh: 0,
-        fps: DEFAULT_FPS, fileFps: null, totalFrames: 0,
+        fps: DEFAULT_FPS, fileFps: null, fileFpsLabel: '', totalFrames: 0,
         frame: 0,                 // 現在表示しているフレーム
         pendingFrame: null,       // シーク中に次に行きたいフレーム
         interval: 1,
@@ -148,6 +150,7 @@ document.addEventListener('DOMContentLoaded', () => {
         el.infoRes.textContent = '';
         el.infoFrames.textContent = '';
         el.fpsSource.textContent = '読み取り中…';
+        el.fpsNominal.textContent = '';
         el.info.classList.remove('hidden');
         el.statusText.textContent = '読み込み中…';
 
@@ -184,7 +187,8 @@ document.addEventListener('DOMContentLoaded', () => {
             S.fileFps = info.fps;
             S.fps = info.fps;
             S.totalFrames = info.frames;
-            el.fpsSource.textContent = info.variable ? '（ファイルから・可変fpsの平均）' : '（ファイルから取得）';
+            S.fileFpsLabel = info.variable ? '（ファイルから取得・平均値）' : '（ファイルから取得）';
+            el.fpsSource.textContent = S.fileFpsLabel;
         } else {
             S.fileFps = null;
             const measured = await measureFps();
@@ -194,6 +198,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (!S.totalFrames) S.totalFrames = Math.max(1, Math.floor(video.duration * S.fps + 1e-6));
         el.fpsInput.value = roundFps(S.fps);
+        updateFpsNominal();
 
         // iPad の Safari では一度再生しないと最初のコマが描画されないことがあるため
         await primeVideo();
@@ -211,11 +216,22 @@ document.addEventListener('DOMContentLoaded', () => {
     function roundFps(f) { return Math.round(f * 1000) / 1000; }
 
     // 推定値は誤差を含むので，よく使われる fps に近ければそれに合わせる
-    function snapFps(f) {
-        const common = [24, 25, 29.97, 30, 48, 50, 59.94, 60, 120, 240];
+    function nearestCommonFps(f, tolerance) {
         let best = null;
-        for (const c of common) if (Math.abs(f - c) / c < 0.03 && (best === null || Math.abs(f - c) < Math.abs(f - best))) best = c;
+        for (const c of COMMON_FPS) if (Math.abs(f - c) / c < tolerance && (best === null || Math.abs(f - c) < Math.abs(f - best))) best = c;
+        return best;
+    }
+
+    function snapFps(f) {
+        const best = nearestCommonFps(f, 0.03);
         return best !== null ? best : Math.round(f * 100) / 100;
+    }
+
+    // 実測値の横に近い規格値を表示する（計算には使わない）
+    function updateFpsNominal() {
+        const c = nearestCommonFps(S.fps, 0.01);
+        if (c === null || Math.abs(S.fps - c) < 0.0005) { el.fpsNominal.textContent = ''; return; }
+        el.fpsNominal.textContent = Number.isInteger(c) ? `規格値 ${c}` : `規格値 ${c}（${Math.round(c)}fps 撮影）`;
     }
 
     async function primeVideo() {
@@ -263,7 +279,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!(v > 0 && v < 1000) || !S.loaded) { el.fpsInput.value = roundFps(S.fps); return; }
         S.fps = v;
         S.totalFrames = Math.max(1, Math.floor(video.duration * S.fps + 1e-6));
-        el.fpsSource.textContent = S.fileFps && Math.abs(v - roundFps(S.fileFps)) < 1e-6 ? '（ファイルから取得）' : '（手動設定）';
+        el.fpsSource.textContent = S.fileFps && Math.abs(v - roundFps(S.fileFps)) < 1e-6 ? S.fileFpsLabel : '（手動設定）';
+        updateFpsNominal();
         updateFrameInfo();
         gotoFrame(Math.min(S.frame, lastFrame()));
         renderAll();
@@ -958,6 +975,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (d.fps && Math.abs(d.fps - S.fps) > 1e-6) {
             S.fps = d.fps; el.fpsInput.value = roundFps(S.fps);
             el.fpsSource.textContent = '（手動設定・復元）';
+            updateFpsNominal();
             S.totalFrames = Math.max(1, Math.floor(video.duration * S.fps + 1e-6));
             updateFrameInfo();
         }
