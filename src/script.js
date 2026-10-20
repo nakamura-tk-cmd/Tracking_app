@@ -1,5 +1,5 @@
 /*
- * 動画解析ツール v2.0
+ * 動画解析ツール（手動） v2.0
  *
  * 設計の要点
  *  - 時刻は「フレーム番号（整数）」で管理し，t = フレーム番号 / fps で求める。
@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     'use strict';
 
     // ===================== 定数 =====================
-    const APP_VERSION = '2.0.4';   // index.html の ?v= と合わせる
+    const APP_VERSION = '2.0.5';   // index.html の ?v= と合わせる
     const COLORS = ['#e8445a', '#2f8fe0', '#e0a400', '#1fa89a'];
     const DEFAULT_FPS = 30;
     // よく使われる fps（23.976, 29.97, 59.94 などは 24, 30, 60fps 撮影の実際の値）
@@ -915,7 +915,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const blob = new Blob(['﻿' + buildCsv()], { type: 'text/csv;charset=utf-8' });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = `${base}_tracking.csv`;
+        a.download = `${base}_Manual_Tracking.csv`;
         document.body.appendChild(a);
         a.click();
         a.remove();
