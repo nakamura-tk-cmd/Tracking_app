@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     'use strict';
 
     // ===================== 定数 =====================
+    const APP_VERSION = '2.0.4';   // index.html の ?v= と合わせる
     const COLORS = ['#e8445a', '#2f8fe0', '#e0a400', '#1fa89a'];
     const DEFAULT_FPS = 30;
     // よく使われる fps（23.976, 29.97, 59.94 などは 24, 30, 60fps 撮影の実際の値）
@@ -1000,6 +1001,8 @@ document.addEventListener('DOMContentLoaded', () => {
     window.__tracker = { S, buildCsv, gotoFrame };
 
     // ===================== 初期化 =====================
+    // 実際に読み込まれた script.js の版を表示（古いファイルが残っていればここでわかる）
+    $('app-version').textContent = `v${APP_VERSION}`;
     renderTabs();
     renderAll();
 });
