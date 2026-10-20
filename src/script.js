@@ -204,7 +204,6 @@ document.addEventListener('DOMContentLoaded', () => {
         await primeVideo();
 
         S.loaded = true;
-        document.getElementById('help-panel').open = false;   // 作業スペースを広く
         layout();
         updateFrameInfo();
         gotoFrame(0);
