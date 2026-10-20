@@ -1,282 +1,247 @@
+/* 動画解析ツール v2.0 */
+:root {
+    --bg: #f4f5f7;
+    --panel: #ffffff;
+    --text: #1d2330;
+    --muted: #667085;
+    --line: #d9dde3;
+    --accent: #2563eb;
+    --accent-weak: #e8efff;
+    --danger: #c62828;
+    --warn-bg: #fff6db;
+    --warn: #8a5a00;
+    --radius: 10px;
+}
+
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
 body {
-    font-family: sans-serif;
-    margin: 20px;
-    background-color: #f9f9f9;
-}
-h1 {
-    color: #333;
-}
-.panel {
-    background: #fff;
-    padding: 15px;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    margin-bottom: 15px;
-}
-.hidden {
-    display: none !important;
-}
-.warning-text {
-    color: red;
-    font-weight: bold;
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", Meiryo, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
 }
 
-/* ▼ ワークスペース（動画とパネルの配置） ▼ */
-.workspace {
+.app-header {
     display: flex;
-    flex-direction: column;
-    gap: 15px;
-    margin-bottom: 15px;
+    align-items: baseline;
+    gap: 10px;
+    padding: 12px 16px 4px;
+}
+.app-header h1 { font-size: 1.35rem; margin: 0; }
+.version { color: var(--muted); font-size: .85rem; }
+
+main { padding: 8px 16px 40px; max-width: 1400px; margin: 0 auto; }
+
+.panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    margin-bottom: 12px;
 }
 
-.workspace.portrait {
-    flex-direction: row; 
-    align-items: stretch;
+.hidden { display: none !important; }
+
+/* ---------- ボタン共通 ---------- */
+button, .file-btn {
+    font: inherit;
+    font-size: .95rem;
+    min-height: 44px;
+    padding: 6px 14px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #fff;
+    color: var(--text);
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-user-select: none;
+    user-select: none;
+}
+button:active:not(:disabled) { background: #eef0f3; }
+button:disabled { opacity: .45; cursor: default; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button.primary:active { background: #1d4fc4; }
+button.danger { color: var(--danger); border-color: #f0c4c4; }
+
+input[type="number"], select {
+    font: inherit;
+    font-size: 16px;            /* iOS で入力時に勝手に拡大されないように */
+    min-height: 40px;
+    padding: 4px 8px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #fff;
 }
 
-.workspace.portrait #video-container {
-    order: 3; 
-}
+.check { display: inline-flex; align-items: center; gap: 6px; font-size: .92rem; cursor: pointer; }
+.check input { width: 20px; height: 20px; }
 
-#video-container {
+/* ---------- 使い方 ---------- */
+.help summary { font-weight: 600; cursor: pointer; }
+.help ol { margin: 8px 0 4px; padding-left: 1.4em; }
+.help li { margin: 4px 0; }
+.help .note { color: var(--muted); font-size: .9rem; margin: 6px 0 0; }
+
+/* ---------- ファイル ---------- */
+.file-panel { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+.file-btn {
+    display: inline-flex; align-items: center;
+    background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600;
+}
+.file-btn input { display: none; }
+.video-info { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; font-size: .92rem; }
+.video-info > span:not(.fps-field) { color: var(--muted); }
+.fps-field { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
+.fps-field input { width: 90px; }
+.fps-field small { font-weight: normal; color: var(--muted); }
+.warning { width: 100%; margin: 0; padding: 6px 10px; background: var(--warn-bg); color: var(--warn); border-radius: 8px; font-size: .9rem; }
+
+.banner {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;
+    background: var(--accent-weak); border: 1px solid #c4d4fb;
+    border-radius: var(--radius); padding: 10px 14px; margin-bottom: 12px;
+}
+.banner span { flex: 1 1 260px; }
+
+/* ---------- 作業エリア ---------- */
+.workspace { display: flex; flex-direction: column; gap: 12px; margin-bottom: 12px; }
+.video-col { min-width: 0; }
+
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 8px; }
+
+.status-bar {
+    display: flex; align-items: center; gap: 10px;
+    min-height: 44px;
+    padding: 6px 12px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-left: 6px solid var(--muted);
+    border-radius: 8px;
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+.status-bar span { flex: 1; }
+.status-bar.mode { border-left-color: #e0a400; background: #fffaf0; }
+.status-bar.remeasure { border-left-color: #e8445a; background: #fff3f4; }
+
+.stage-wrap { width: 100%; display: flex; justify-content: center; }
+.stage {
     position: relative;
-    border: 1px solid #ccc;
-    background-color: #000;
     overflow: hidden;
-    /* ▼ 修正：iPad等でタッチして上下スクロールできる「セーフゾーン」を両サイドに確保 ▼ */
-    max-width: calc(100% - 60px); 
-    margin: 0 30px; 
-    
-    max-height: 80vh; 
-    flex-grow: 1; 
+    background: #000;
+    border-radius: 6px;
+    width: 100%;
+    min-height: 200px;
 }
-#video-player {
-    display: block;
-    max-width: 100%;
-    max-height: 100%;
+.layer {
+    position: absolute; top: 0; left: 0;
     transform-origin: 0 0;
 }
-#event-shield {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+.layer video { display: block; width: 100%; height: 100%; }
+.overlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+.shield {
+    position: absolute; inset: 0;
+    z-index: 2;
     cursor: crosshair;
-    z-index: 10;
-    touch-action: none; 
+    touch-action: none;
+    -webkit-user-select: none; user-select: none;
+    -webkit-touch-callout: none;
 }
-#scale-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+.zoom-label {
+    position: absolute; top: 8px; left: 8px; z-index: 3;
+    background: rgba(0,0,0,.55); color: #fff;
+    font-size: .8rem; padding: 2px 8px; border-radius: 6px;
     pointer-events: none;
-    z-index: 5;
 }
-#debug-overlay {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    color: lime;
-    background: rgba(0,0,0,0.5);
-    padding: 2px 5px;
-    font-family: monospace;
+.toast {
+    position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%);
+    z-index: 4;
+    background: rgba(20,24,32,.88); color: #fff;
+    padding: 8px 14px; border-radius: 8px;
+    font-size: .92rem; max-width: 90%; text-align: center;
     pointer-events: none;
-    z-index: 20;
 }
 
-/* ▼ 操作パネル（横長動画のとき） ▼ */
-.main-controls-container {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-    margin-bottom: 0;
+/* オーバーレイ要素 */
+.axes line { stroke: rgba(255,255,255,.55); stroke-width: 1; stroke-dasharray: 6 4; }
+.axis-label { fill: #fff; font-weight: 700; paint-order: stroke; stroke: #000; stroke-width: 2px; }
+.scale-line { stroke: #ffd400; stroke-width: 2; stroke-dasharray: 6 4; opacity: .75; }
+.scale-line.active { opacity: 1; stroke-width: 3; }
+.scale-pt { fill: #ffd400; stroke: #000; stroke-width: 1px; }
+.remeasure-ring { fill: none; stroke: #fff; stroke-width: 2; stroke-dasharray: 4 3; }
+
+.scale-panel {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    margin-top: 8px; padding: 10px 12px;
+    background: #fffaf0; border: 1px solid #f0d58a; border-radius: 8px;
+    font-weight: 600;
 }
-.controls-buttons-wrap {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
+.scale-panel input { width: 110px; }
+
+/* 操作パネル */
+.control-col {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px 20px;
+    align-items: start;
 }
-.main-controls-row1, .main-controls-row2 {
-    display: flex;
-    justify-content: center;
-    gap: 10px;
-}
-.main-controls-row3 {
-    display: flex;
-    width: 100%;
-    padding: 5px 0 15px 0; 
-}
-#seek-bar {
-    width: 100%;
-    cursor: pointer;
+.readout { grid-column: 1 / -1; display: flex; gap: 20px; font-variant-numeric: tabular-nums; font-size: 1.1rem; font-weight: 600; }
+#seek-bar { grid-column: 1 / -1; width: 100%; height: 32px; }
+.transport { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; }
+.transport button { flex: 1 1 60px; font-size: 1rem; }
+.transport .play { flex: 1.4 1 70px; background: var(--accent); color: #fff; border-color: var(--accent); }
+
+.interval span { display: block; font-size: .9rem; margin-bottom: 4px; }
+.stepper { display: inline-flex; align-items: center; gap: 4px; }
+.stepper button { width: 44px; padding: 0; font-size: 1.2rem; }
+.stepper input { width: 70px; text-align: center; }
+.interval small { display: block; color: var(--muted); margin-top: 2px; }
+
+.objects label { display: flex; align-items: center; gap: 8px; font-size: .9rem; margin-bottom: 6px; }
+.object-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.object-tab { border-bottom: 4px solid var(--c); }
+.object-tab.active { background: var(--c); color: #fff; border-color: var(--c); font-weight: 700; }
+
+.undo { font-weight: 600; }
+.calib { font-size: .88rem; color: var(--muted); }
+
+/* 縦長動画は横に並べる（画面に余裕がある場合） */
+@media (min-width: 900px) {
+    .workspace.portrait { flex-direction: row; align-items: flex-start; }
+    .workspace.portrait .video-col { flex: 1 1 auto; }
+    .workspace.portrait .control-col { flex: 0 0 340px; grid-template-columns: 1fr; position: sticky; top: 8px; }
 }
 
-/* ▼ 操作パネル（縦長動画のとき） ▼ */
-.workspace.portrait .main-controls-container {
-    flex-direction: row; 
-    align-items: center;
-    min-width: min-content; 
-    padding: 10px; 
-    order: 1; 
-}
+/* ---------- データ表 ---------- */
+.data-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.data-header h2 { font-size: 1.15rem; margin: 0; }
+.data-header h2 small { font-weight: normal; color: var(--muted); font-size: .85rem; }
+.data-buttons { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
 
-.workspace.portrait .controls-buttons-wrap {
-    flex-direction: column;
-    justify-content: center;
-    gap: 15px; 
-    order: 1; 
-}
-.workspace.portrait .main-controls-row1, 
-.workspace.portrait .main-controls-row2 {
-    flex-direction: column;
-}
-.workspace.portrait .main-controls-row1 {
-    margin-bottom: 0;
-    border-bottom: 2px solid #ccc;
-    padding-bottom: 15px;
-}
+.table-wrap { max-height: 420px; overflow: auto; margin-top: 10px; border: 1px solid var(--line); border-radius: 8px; -webkit-overflow-scrolling: touch; }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; font-size: .92rem; }
+th, td { padding: 6px 10px; border-bottom: 1px solid #eceef1; text-align: left; white-space: nowrap; }
+thead th { position: sticky; top: 0; background: #f8f9fb; border-bottom: 3px solid var(--line); z-index: 1; }
+td.goto { cursor: pointer; color: var(--accent); }
+td.empty { color: #aab; text-align: center; }
+td.vel, th.vel { background: #fafbff; }
+thead th.vel { background: #f1f4fb; }
+tr.current td { background: #eef4ff; }
+tr.updating td { background: #fff1d6; }
+.cell { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.cell-btns { display: inline-flex; gap: 4px; }
+.cell-btns button { min-height: 32px; padding: 2px 8px; font-size: .82rem; }
+.cell-btns .del { color: var(--danger); }
 
-.workspace.portrait .main-controls-row3 {
-    width: 40px;
-    height: 100%;
-    padding: 0 10px; 
-    order: 2; 
-}
-.workspace.portrait #seek-bar {
-    -webkit-appearance: slider-vertical;
-    writing-mode: bt-lr;
-    transform: rotate(180deg);
-    width: 100%;
-    height: 100%;
-    min-height: 400px;
-    margin: 0;
-}
-
-.info-display {
-    margin: 10px 0;
-    font-weight: bold;
-}
-.info-display span {
-    margin-right: 20px;
-}
-.settings-panel {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 20px;
-    align-items: center;
-}
-.settings-group {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-}
-button {
-    padding: 8px 12px;
-    cursor: pointer;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    background-color: #fff;
-    font-size: 1em;
-    white-space: nowrap; 
-}
-button:hover {
-    background-color: #f0f0f0;
-}
-
-.data-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-.table-container {
-    overflow-x: auto;
-}
-table {
-    width: 100%;
-    border-collapse: collapse;
-    background: #fff;
-    margin-top: 10px;
-    min-width: 600px;
-}
-th, td {
-    padding: 8px;
-    text-align: center;
-    vertical-align: middle;
-}
-th {
-    background-color: #eee;
-}
-.updating-row {
-    background-color: #fffacd;
-}
-
-.data-cell-content {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 15px; 
-    white-space: nowrap;
-}
-.cell-actions {
-    display: flex;
-    align-items: center;
-    gap: 5px; 
-}
-.cell-actions button {
-    padding: 4px 8px;
-    font-size: 0.9em;
-}
-
-.remeasure-alert {
-    background-color: #fffacd;
-    border: 1px solid #ffce56;
-    padding: 10px;
-    border-radius: 4px;
-    font-weight: bold;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-.cancel-btn {
-    background-color: #ffcccc;
-}
-.cancel-btn:hover {
-    background-color: #ffb3b3;
-}
-
-#interval-input, #object-count {
-    font-size: 1.4em;
-    font-weight: bold;
-    text-align: center;
-    padding: 5px;
-}
-#interval-input {
-    width: 80px;
-}
-.spinner-btn {
-    width: 40px;
-    height: 40px;
-    font-size: 24px;
-    font-weight: bold;
-    cursor: pointer;
-    background-color: #f0f0f0;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-}
-.object-tab {
-    padding: 10px 15px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    background-color: #fff;
-    cursor: pointer;
-    font-size: 1.1em;
-    transition: all 0.2s ease;
-}
-.object-tab.active {
-    font-weight: bold;
-    font-size: 1.5em;
-    background-color: #e6f7ff;
+@media (max-width: 600px) {
+    main { padding: 6px 8px 30px; }
+    .control-col { grid-template-columns: 1fr; }
 }
