@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     'use strict';
 
     // ===================== 定数 =====================
-    const APP_VERSION = '2.0.6';   // index.html の ?v= と合わせる
+    const APP_VERSION = '2.0.7';   // index.html の ?v= と合わせる
     const COLORS = ['#e8445a', '#2f8fe0', '#e0a400', '#1fa89a'];
     const DEFAULT_FPS = 30;
     // よく使われる fps（23.976, 29.97, 59.94 などは 24, 30, 60fps 撮影の実際の値）
@@ -180,7 +180,7 @@ document.addEventListener('DOMContentLoaded', () => {
         el.workspace.classList.toggle('portrait', S.vh > S.vw);
 
         const big = S.vw > 1920 || file.size > 300 * 1024 * 1024;
-        el.warning.textContent = big ? '動画が大きいため，コマ送りが遅くなることがあります。写真アプリで不要部分をトリミングすると快適になります。' : '';
+        el.warning.textContent = big ? '動画が大きいため，コマ送りが遅くなることがあります。写真アプリで不要部分をトリミングすると多少は快適になります。' : '';
         el.warning.classList.toggle('hidden', !big);
 
         const info = await infoPromise;
