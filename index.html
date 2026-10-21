@@ -5,19 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <title>動画解析ツール（手動）</title>
-    <link rel="stylesheet" href="css/style.css?v=2.0.5">
+    <link rel="stylesheet" href="css/style.css?v=2.0.6">
 </head>
 <body>
 
 <header class="app-header">
     <h1>動画解析ツール（手動）</h1>
-    <span class="version" id="app-version">v2.0.5</span>
+    <span class="version" id="app-version">v2.0.6</span>
 </header>
 
 <main>
 
-    <details class="panel help" id="help-panel" open>
-        <summary>操作手順（タップで開閉）</summary>
+    <!-- 常に表示（閉じられると作業エリアがページ上端に近づき，下に引っ張ったときに誤って再読み込みしやすくなるため） -->
+    <section class="panel help" id="help-panel">
+        <h2 class="help-title">操作手順</h2>
         <ol>
             <li><strong>動画を選ぶ:</strong>「動画を選ぶ」から解析する動画を指定します。fps（1秒あたりのコマ数）は動画ファイルから自動で読み取ります。動画は 30fps か 60fps で撮影してください（スローモーションは時刻が正しく計算できないため使えません）。
                 <ul>
@@ -31,10 +32,10 @@
             <li><strong>コマ数 N を設定:</strong> 1回記録するごとに進むコマ数です。時間間隔（秒）も横に表示されます。</li>
             <li><strong>記録:</strong> 記録を始めるコマに移動し，物体をタップします。タップした位置が記録され，自動で N コマ進みます。記録した点は動画上に表示されます。</li>
             <li><strong>修正:</strong> 間違えたら「↶ 元に戻す」。表の「再計測」で特定の点だけやり直せます。</li>
-            <li><strong>出力:</strong>「CSVダウンロード」で保存します。「速度を表示・出力する」をオンにすると，表とCSVに速度（中心差分）の列が加わります。</li>
+            <li><strong>出力:</strong>「CSVダウンロード」で保存します。「速度を表示・出力する」をオンにすると，表とCSVに速度（中心差分）の列が加わります。計算方法は表の上に表示されます。</li>
         </ol>
         <p class="note">拡大・縮小: 2本指のピンチ／マウスホイール。移動: 拡大中にドラッグ。データはこの端末のブラウザに自動保存され，同じ動画を開くと復元できます。</p>
-    </details>
+    </section>
 
     <section class="panel file-panel">
         <label class="file-btn">
@@ -159,6 +160,11 @@
                 <button id="csv-btn" class="primary">CSVダウンロード</button>
             </div>
         </div>
+        <p id="velocity-note" class="velocity-note hidden">
+            速度は前後の記録点から計算しています（中心差分）:
+            v<sub>i</sub> = (x<sub>i+1</sub> − x<sub>i−1</sub>) ÷ (t<sub>i+1</sub> − t<sub>i−1</sub>)（y も同様）。
+            最初と最後の記録点は前後がそろわないため，速度は空欄になります。
+        </p>
         <div class="table-wrap">
             <table id="data-table">
                 <thead id="data-head"></thead>
@@ -170,7 +176,7 @@
 </main>
 
 <!-- 更新して公開するたびに ?v= の番号と，script.js の APP_VERSION を上げる（ブラウザに古いファイルが残るのを防ぐ） -->
-<script src="src/mp4info.js?v=2.0.5"></script>
-<script src="src/script.js?v=2.0.5"></script>
+<script src="src/mp4info.js?v=2.0.6"></script>
+<script src="src/script.js?v=2.0.6"></script>
 </body>
 </html>

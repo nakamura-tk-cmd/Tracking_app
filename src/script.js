@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     'use strict';
 
     // ===================== 定数 =====================
-    const APP_VERSION = '2.0.5';   // index.html の ?v= と合わせる
+    const APP_VERSION = '2.0.6';   // index.html の ?v= と合わせる
     const COLORS = ['#e8445a', '#2f8fe0', '#e0a400', '#1fa89a'];
     const DEFAULT_FPS = 30;
     // よく使われる fps（23.976, 29.97, 59.94 などは 24, 30, 60fps 撮影の実際の値）
@@ -41,7 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
         intervalInput: $('interval-input'), intervalMinus: $('interval-minus'), intervalPlus: $('interval-plus'), intervalTime: $('interval-time'),
         objectCount: $('object-count'), objectTabs: $('object-tabs'), undoBtn: $('undo-btn'),
         scaleDisplay: $('scale-display'), originDisplay: $('origin-display'),
-        dataCount: $('data-count'), tzeroCheck: $('tzero-check'), velocityCheck: $('velocity-check'), clearBtn: $('clear-btn'), csvBtn: $('csv-btn'),
+        dataCount: $('data-count'), tzeroCheck: $('tzero-check'), velocityCheck: $('velocity-check'), velocityNote: $('velocity-note'), clearBtn: $('clear-btn'), csvBtn: $('csv-btn'),
         dataHead: $('data-head'), dataBody: $('data-body'),
     };
     const video = el.video;
@@ -797,6 +797,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         el.dataBody.innerHTML = html || `<tr><td colspan="${S.objectCount * (S.showVelocity ? 2 : 1) + 2}" class="empty">まだ記録がありません</td></tr>`;
         el.dataCount.textContent = S.points.size ? `（${S.points.size} 点）` : '';
+        el.velocityNote.classList.toggle('hidden', !S.showVelocity);
         highlightRow();
     }
 

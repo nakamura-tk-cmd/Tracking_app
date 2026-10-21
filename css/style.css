@@ -81,7 +81,7 @@ input[type="number"], select {
 .check input { width: 20px; height: 20px; }
 
 /* ---------- 使い方 ---------- */
-.help summary { font-weight: 600; cursor: pointer; }
+.help-title { font-size: 1rem; margin: 0; }
 .help ol { margin: 8px 0 4px; padding-left: 1.4em; }
 .help li { margin: 4px 0; }
 .help .note { color: var(--muted); font-size: .9rem; margin: 6px 0 0; }
@@ -226,6 +226,7 @@ input[type="number"], select {
 .data-header h2 small { font-weight: normal; color: var(--muted); font-size: .85rem; }
 .data-buttons { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
 
+.velocity-note { margin: 10px 0 0; padding: 8px 12px; background: var(--accent-weak); border-radius: 8px; font-size: .9rem; }
 .table-wrap { max-height: 420px; overflow: auto; margin-top: 10px; border: 1px solid var(--line); border-radius: 8px; -webkit-overflow-scrolling: touch; }
 table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; font-size: .92rem; }
 th, td { padding: 6px 10px; border-bottom: 1px solid #eceef1; text-align: left; white-space: nowrap; }
