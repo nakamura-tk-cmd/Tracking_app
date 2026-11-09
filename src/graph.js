@@ -32,8 +32,10 @@
     }
 
     function paddedRange(lo, hi) {
-        if (lo === hi) {
-            const d = Math.abs(lo) * 0.1 || 1;
+        // 全部同じ値（計算の丸め誤差だけの差を含む）なら，値の大きさから範囲を決める
+        const size = Math.max(Math.abs(lo), Math.abs(hi));
+        if (hi - lo <= Math.max(size * 1e-9, 1e-9)) {
+            const d = size > 1e-9 ? size * 0.1 : 1;
             return [lo - d, hi + d];
         }
         const d = (hi - lo) * 0.05;

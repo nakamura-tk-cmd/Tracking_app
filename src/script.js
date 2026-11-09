@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     'use strict';
 
     // ===================== 定数 =====================
-    const APP_VERSION = '2.1.1';   // index.html の ?v= と合わせる
+    const APP_VERSION = '2.1.2';   // index.html の ?v= と合わせる
     const COLORS = ['#e8445a', '#2f8fe0', '#e0a400', '#1fa89a'];
     const DEFAULT_FPS = 30;
     // よく使われる fps（23.976, 29.97, 59.94 などは 24, 30, 60fps 撮影の実際の値）
@@ -870,7 +870,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ===================== グラフ =====================
-    const GRAPH_KINDS = ['x', 'y', 'vx', 'vy'];
+    const GRAPH_KINDS = ['x', 'y', 'vx', 'vy', 'ax', 'ay'];
     const graph = createGraph($('graph'), f => {
         if (!S.loaded) return;
         if (S.mode === 'remeasure') { toast('再計測中はグラフから移動できません'); return; }
@@ -881,22 +881,26 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderGraph() {
         const k = S.graphKind;
         const isVelocity = k === 'vx' || k === 'vy';
+        const isAccel = k === 'ax' || k === 'ay';
+        const derived = isAccel ? accelerations : isVelocity ? velocities : null;
         const series = [];
         for (let id = 1; id <= S.objectCount; id++) {
             // 速度は表と同じ中心差分の値を使う
-            const values = isVelocity
-                ? [...velocities(id)].map(([f, v]) => ({ f, t: timeOf(f), v: v[k] }))
+            const values = derived
+                ? [...derived(id)].map(([f, v]) => ({ f, t: timeOf(f), v: v[k] }))
                 : [...S.points.values()].filter(p => p.id === id).sort((a, b) => a.f - b.f)
                     .map(p => ({ f: p.f, t: timeOf(p.f), v: toPhys(p)[k] }));
             series.push({ color: COLORS[id - 1], label: `物体${id}`, points: values });
         }
         graphButtons.forEach(b => b.classList.toggle('active', b.dataset.kind === k));
+        $('accel-note').classList.toggle('hidden', !isAccel);
         graph.render({
             series,
             xLabel: 't (s)',
-            yLabel: isVelocity ? `${k} (${unit()}/s)` : `${k} (${unit()})`,
+            yLabel: isAccel ? `${k} (${unit()}/s²)` : isVelocity ? `${k} (${unit()}/s)` : `${k} (${unit()})`,
             cursor: S.loaded ? timeOf(S.frame) : null,
-            empty: isVelocity ? '速度を表示するには記録が3点以上必要です' : 'まだ記録がありません',
+            empty: isAccel ? '加速度を表示するには記録が5点以上必要です'
+                : isVelocity ? '速度を表示するには記録が3点以上必要です' : 'まだ記録がありません',
         });
     }
 
@@ -917,6 +921,18 @@ document.addEventListener('DOMContentLoaded', () => {
             v.set(pts[i].f, { vx: (b.x - a.x) / dt, vy: (b.y - a.y) / dt });
         }
         return v;
+    }
+
+    // 加速度は中心差分の速度をさらに中心差分する。a_k = (v_{k+1} - v_{k-1}) / (t_{k+1} - t_{k-1})
+    function accelerations(id) {
+        const v = [...velocities(id)];
+        const a = new Map();
+        for (let i = 1; i < v.length - 1; i++) {
+            const [f0, p] = v[i - 1], [f1, q] = v[i + 1];
+            const dt = (f1 - f0) / S.fps;
+            a.set(v[i][0], { ax: (q.vx - p.vx) / dt, ay: (q.vy - p.vy) / dt });
+        }
+        return a;
     }
 
     function buildCsv() {

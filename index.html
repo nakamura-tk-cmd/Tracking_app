@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <title>動画解析ツール（手動）</title>
-    <link rel="stylesheet" href="css/style.css?v=2.1.1">
+    <link rel="stylesheet" href="css/style.css?v=2.1.2">
 </head>
 <body>
 
 <header class="app-header">
     <h1>動画解析ツール（手動）</h1>
-    <span class="version" id="app-version">v2.1.1</span>
+    <span class="version" id="app-version">v2.1.2</span>
 </header>
 
 <main>
@@ -37,7 +37,7 @@
             </li>
             <li><strong>修正:</strong> 間違えたら「↶ 元に戻す」。表の「再計測」で特定の点だけやり直せます。</li>
             <li><strong>出力:</strong>「CSVダウンロード」で保存します。「速度を表示・出力する」をオンにすると，表とCSVに速度（中心差分）の列が加わります。計算方法は表の上に表示されます。</li>
-            <li><strong>グラフ:</strong> 画面の一番下に表示されます。x-t，y-t，vx-t，vy-t をボタンで切り替えられます。縦線はいま表示しているフレームの時刻です。点をタップすると，動画がそのフレームへ移動します。</li>
+            <li><strong>グラフ:</strong> 画面の一番下に表示されます。x-t，y-t，vx-t，vy-t，ax-t，ay-t をボタンで切り替えられます。縦線はいま表示しているフレームの時刻です。点をタップすると，動画がそのフレームへ移動します。</li>
         </ol>
         <p class="note">拡大・縮小: 2本指のピンチ／マウスホイール。移動: 拡大中にドラッグ。データはこの端末のブラウザに自動保存され，同じ動画を開くと復元できます。</p>
     </section>
@@ -186,16 +186,23 @@
                 <button data-kind="y">y-t</button>
                 <button data-kind="vx">vx-t</button>
                 <button data-kind="vy">vy-t</button>
+                <button data-kind="ax">ax-t</button>
+                <button data-kind="ay">ay-t</button>
             </div>
         </div>
         <div id="graph" class="graph"></div>
+        <p id="accel-note" class="graph-note hidden">
+            加速度は速度の中心差分をさらに中心差分して計算しています:
+            a<sub>k</sub> = (v<sub>k+1</sub> − v<sub>k−1</sub>) ÷ (t<sub>k+1</sub> − t<sub>k−1</sub>)。
+            位置の読み取りのずれが大きく表れるので，衝突のときの大きな変化に注目しましょう。
+        </p>
     </section>
 
 </main>
 
 <!-- 更新して公開するたびに ?v= の番号と，script.js の APP_VERSION を上げる（ブラウザに古いファイルが残るのを防ぐ） -->
-<script src="src/mp4info.js?v=2.1.1"></script>
-<script src="src/graph.js?v=2.1.1"></script>
-<script src="src/script.js?v=2.1.1"></script>
+<script src="src/mp4info.js?v=2.1.2"></script>
+<script src="src/graph.js?v=2.1.2"></script>
+<script src="src/script.js?v=2.1.2"></script>
 </body>
 </html>

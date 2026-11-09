@@ -251,6 +251,7 @@ tr.updating td { background: #fff1d6; }
 .graph-grid { stroke: #e6e9ee; stroke-width: 1; }
 .graph-zero { stroke: #5b6472; stroke-width: 2; }
 .graph-frame { fill: none; stroke: var(--line); stroke-width: 1; }
+.graph-note { margin: 8px 0 0; color: var(--muted); font-size: .85rem; }
 .graph-cursor { stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 5 3; }
 
 @media (max-width: 600px) {
