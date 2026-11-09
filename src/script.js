@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     'use strict';
 
     // ===================== 定数 =====================
-    const APP_VERSION = '2.1.0';   // index.html の ?v= と合わせる
+    const APP_VERSION = '2.1.1';   // index.html の ?v= と合わせる
     const COLORS = ['#e8445a', '#2f8fe0', '#e0a400', '#1fa89a'];
     const DEFAULT_FPS = 30;
     // よく使われる fps（23.976, 29.97, 59.94 などは 24, 30, 60fps 撮影の実際の値）
@@ -870,7 +870,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ===================== グラフ =====================
-    const GRAPH_KINDS = ['x', 'y'];
+    const GRAPH_KINDS = ['x', 'y', 'vx', 'vy'];
     const graph = createGraph($('graph'), f => {
         if (!S.loaded) return;
         if (S.mode === 'remeasure') { toast('再計測中はグラフから移動できません'); return; }
@@ -880,22 +880,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderGraph() {
         const k = S.graphKind;
+        const isVelocity = k === 'vx' || k === 'vy';
         const series = [];
         for (let id = 1; id <= S.objectCount; id++) {
-            const pts = [...S.points.values()].filter(p => p.id === id).sort((a, b) => a.f - b.f);
-            series.push({
-                color: COLORS[id - 1],
-                label: `物体${id}`,
-                points: pts.map(p => ({ f: p.f, t: timeOf(p.f), v: toPhys(p)[k] })),
-            });
+            // 速度は表と同じ中心差分の値を使う
+            const values = isVelocity
+                ? [...velocities(id)].map(([f, v]) => ({ f, t: timeOf(f), v: v[k] }))
+                : [...S.points.values()].filter(p => p.id === id).sort((a, b) => a.f - b.f)
+                    .map(p => ({ f: p.f, t: timeOf(p.f), v: toPhys(p)[k] }));
+            series.push({ color: COLORS[id - 1], label: `物体${id}`, points: values });
         }
         graphButtons.forEach(b => b.classList.toggle('active', b.dataset.kind === k));
         graph.render({
             series,
             xLabel: 't (s)',
-            yLabel: `${k} (${unit()})`,
+            yLabel: isVelocity ? `${k} (${unit()}/s)` : `${k} (${unit()})`,
             cursor: S.loaded ? timeOf(S.frame) : null,
-            empty: 'まだ記録がありません',
+            empty: isVelocity ? '速度を表示するには記録が3点以上必要です' : 'まだ記録がありません',
         });
     }
 
