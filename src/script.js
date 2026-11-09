@@ -12,9 +12,20 @@ document.addEventListener('DOMContentLoaded', () => {
     'use strict';
 
     // ===================== 定数 =====================
-    const APP_VERSION = '2.1.3';   // index.html の ?v= と合わせる
+    const APP_VERSION = '2.1.4';   // index.html の ?v= と合わせる
     const COLORS = ['#e8445a', '#2f8fe0', '#e0a400', '#1fa89a'];
     const DEFAULT_FPS = 30;
+    const LOAD_TIMEOUT = 30000;  // これ以上進まなければ読み込みが止まったとみなす（ミリ秒）
+    // 読み込めないときの案内。数字のキーは MediaError のコード
+    const LOAD_ERRORS = {
+        2: 'この動画を読み取れませんでした。iCloud にある動画は，写真アプリや「ファイル」アプリで一度開いてダウンロードが終わってから，もう一度選んでください。',
+        3: 'この動画は，ファイルが壊れているか，この端末で処理できない可能性があります。別の動画で試してください。',
+        4: 'このブラウザでは再生できない形式か，ファイルが壊れています。iPad のカメラで撮影した動画を，iPad の Safari で開いてください。',
+        empty: 'このファイルは中身が空です（0 バイト）。元の場所からもう一度移してください。',
+        noVideo: '映像が入っていないファイルです。映像のある動画を選んでください。',
+        stalled: '動画の読み込みが止まっています。ファイルが大きすぎる可能性があります。ページを開き直してから，短くトリミングした動画で試してください。',
+        other: 'この動画は読み込めませんでした。別の動画で試してください。',
+    };
     // よく使われる fps（23.976, 29.97, 59.94 などは 24, 30, 60fps 撮影の実際の値）
     const COMMON_FPS = [23.976, 24, 25, 29.97, 30, 48, 50, 59.94, 60, 119.88, 120, 239.76, 240];
     const TAP_SLOP = 8;          // これ以上動いたらタップではなくドラッグ
@@ -50,6 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ===================== 状態 =====================
     const S = {
         loaded: false,
+        loadError: '',            // 読み込めなかったときの案内
         file: null, fileKey: null, url: null,
         vw: 0, vh: 0,
         fps: DEFAULT_FPS, fileFps: null, fileFpsLabel: '', totalFrames: 0,
@@ -85,7 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function setStatus() {
         let text = '', cancel = false, cls = '';
-        if (!S.loaded) text = '動画を選んでください';
+        if (!S.loaded) text = S.loadError || '動画を選んでください';
         else if (S.mode === 'origin') { text = '原点にしたい点をタップしてください'; cancel = true; cls = 'mode'; }
         else if (S.mode === 'scale') {
             text = S.scaleTmp.length === 0 ? 'スケール: 長さがわかっている物体の「始点」をタップ' : 'スケール: 次に「終点」をタップ';
@@ -145,7 +157,9 @@ document.addEventListener('DOMContentLoaded', () => {
         S.url = URL.createObjectURL(file);
         S.points = new Map(); S.undo = []; S.origin = null; S.scale = null;
         S.frame = 0; S.pendingFrame = null; S.lastMediaTime = null;
+        S.loadError = '';
         cancelMode(true);
+        renderAll();               // 前の動画の表とグラフを消す
         el.restoreBanner.classList.add('hidden');
 
         el.infoName.textContent = file.name;
@@ -160,21 +174,27 @@ document.addEventListener('DOMContentLoaded', () => {
         // fps はヘッダから読む（動画の読み込みと並行）
         const infoPromise = window.readVideoInfo ? window.readVideoInfo(file) : Promise.resolve(null);
 
+        if (file.size === 0) { loadFailed(LOAD_ERRORS.empty); return; }
+
         video.src = S.url;
         video.load();
-        await new Promise((resolve, reject) => {
-            const ok = () => { cleanup(); resolve(); };
-            const ng = () => { cleanup(); reject(); };
-            const cleanup = () => { video.removeEventListener('loadedmetadata', ok); video.removeEventListener('error', ng); };
+        const result = await new Promise(resolve => {
+            const finish = r => {
+                clearTimeout(timer);
+                video.removeEventListener('loadedmetadata', ok);
+                video.removeEventListener('error', ng);
+                resolve(r);
+            };
+            const ok = () => finish('ok');
+            const ng = () => finish('error');
+            const timer = setTimeout(() => finish('timeout'), LOAD_TIMEOUT);
             video.addEventListener('loadedmetadata', ok);
             video.addEventListener('error', ng);
-        }).catch(() => null);
+        });
 
-        if (!video.videoWidth) {
-            el.statusText.textContent = 'この動画は読み込めませんでした（形式を確認してください）';
-            el.fpsSource.textContent = '';
-            return;
-        }
+        if (result === 'timeout') { loadFailed(LOAD_ERRORS.stalled); return; }
+        if (result === 'error') { loadFailed(LOAD_ERRORS[video.error ? video.error.code : 0] || LOAD_ERRORS.other); return; }
+        if (!video.videoWidth) { loadFailed(LOAD_ERRORS.noVideo); return; }
 
         S.vw = video.videoWidth; S.vh = video.videoHeight;
         el.infoRes.textContent = `${S.vw} × ${S.vh}`;
@@ -204,7 +224,7 @@ document.addEventListener('DOMContentLoaded', () => {
         updateFpsNominal();
 
         // iPad の Safari では一度再生しないと最初のコマが描画されないことがあるため
-        await primeVideo();
+        if (!await primeVideo()) { loadFailed(LOAD_ERRORS.stalled); return; }
 
         S.loaded = true;
         layout();
@@ -236,12 +256,33 @@ document.addEventListener('DOMContentLoaded', () => {
         el.fpsNominal.textContent = Number.isInteger(c) ? `規格値 ${c}` : `規格値 ${c}（${Math.round(c)}fps 撮影）`;
     }
 
+    // 再生が始まらないまま止まっているときは false を返す
     async function primeVideo() {
         try {
-            await video.play();
+            const started = await Promise.race([
+                video.play().then(() => true),
+                new Promise(r => setTimeout(() => r(false), LOAD_TIMEOUT)),
+            ]);
+            if (!started) { video.pause(); return false; }
             await new Promise(r => setTimeout(r, 60));
         } catch (e) { /* 自動再生できなくても問題なし */ }
         video.pause();
+        return true;
+    }
+
+    function loadFailed(message) {
+        S.loadError = message;
+        el.fpsSource.textContent = '';
+        el.fpsNominal.textContent = '';
+        el.fpsInput.value = '';
+        el.warning.classList.add('hidden');
+        el.frameDisplay.textContent = 'フレーム – / –';
+        el.timeDisplay.textContent = 't = – s';
+        el.seekBar.max = 0;
+        el.seekBar.value = 0;
+        video.removeAttribute('src');
+        video.load();
+        setStatus();
     }
 
     // ヘッダから fps が取れないとき：少し再生してコマの間隔を測る
