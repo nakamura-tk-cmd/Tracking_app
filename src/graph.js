@@ -3,7 +3,7 @@
  * 記録データの散布図を SVG で描く（外部ライブラリなし）。描画だけを担当し，アプリの状態には触らない。
  *
  *   const g = createGraph(container, frame => { ... });   // 点をタップしたときに呼ばれる
- *   g.render({ series: [{ color, label, points: [{ f, t, v }] }], xLabel, yLabel, cursor, empty });
+ *   g.render({ series: [{ color, label, points: [{ f, t, v }] }], lines, xLabel, yLabel, cursor, empty });
  *   g.setCursor(t);   // 縦線だけを動かす
  */
 (function (global) {
@@ -118,6 +118,13 @@
 
             if (cur !== null) {
                 cursorLine = node(svg, 'line', { x1: sx(cur), y1: M.t, x2: sx(cur), y2: bottom, class: 'graph-cursor' });
+            }
+
+            if (data.lines) {
+                data.series.forEach(s => {
+                    if (s.points.length < 2) return;
+                    node(svg, 'polyline', { points: s.points.map(p => `${sx(p.t)},${sy(p.v)}`).join(' '), class: 'graph-line', stroke: s.color });
+                });
             }
 
             data.series.forEach((s, i) => {
