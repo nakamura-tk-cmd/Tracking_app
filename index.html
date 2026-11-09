@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <title>動画解析ツール（手動）</title>
-    <link rel="stylesheet" href="css/style.css?v=2.0.7">
+    <link rel="stylesheet" href="css/style.css?v=2.1.0">
 </head>
 <body>
 
 <header class="app-header">
     <h1>動画解析ツール（手動）</h1>
-    <span class="version" id="app-version">v2.0.7</span>
+    <span class="version" id="app-version">v2.1.0</span>
 </header>
 
 <main>
@@ -177,10 +177,22 @@
         </div>
     </section>
 
+    <section class="panel graph-panel">
+        <div class="data-header">
+            <h2>グラフ</h2>
+            <div id="graph-kinds" class="graph-kinds">
+                <button data-kind="x">x-t</button>
+                <button data-kind="y">y-t</button>
+            </div>
+        </div>
+        <div id="graph" class="graph"></div>
+    </section>
+
 </main>
 
 <!-- 更新して公開するたびに ?v= の番号と，script.js の APP_VERSION を上げる（ブラウザに古いファイルが残るのを防ぐ） -->
-<script src="src/mp4info.js?v=2.0.7"></script>
-<script src="src/script.js?v=2.0.7"></script>
+<script src="src/mp4info.js?v=2.1.0"></script>
+<script src="src/graph.js?v=2.1.0"></script>
+<script src="src/script.js?v=2.1.0"></script>
 </body>
 </html>

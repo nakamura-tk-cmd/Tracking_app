@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     'use strict';
 
     // ===================== 定数 =====================
-    const APP_VERSION = '2.0.7';   // index.html の ?v= と合わせる
+    const APP_VERSION = '2.1.0';   // index.html の ?v= と合わせる
     const COLORS = ['#e8445a', '#2f8fe0', '#e0a400', '#1fa89a'];
     const DEFAULT_FPS = 30;
     // よく使われる fps（23.976, 29.97, 59.94 などは 24, 30, 60fps 撮影の実際の値）
@@ -67,6 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
         view: { s: 1, tx: 0, ty: 0 },
         disp: { w: 0, h: 0 },
         showTrail: true, tZero: false, showVelocity: false,
+        graphKind: 'x',           // GRAPH_KINDS のどれか
         lastMediaTime: null,
     };
 
@@ -432,6 +433,7 @@ document.addEventListener('DOMContentLoaded', () => {
         el.frameDisplay.textContent = `フレーム ${S.frame} / ${lastFrame()}`;
         el.timeDisplay.textContent = `t = ${timeOf(S.frame).toFixed(4)} s`;
         el.seekBar.value = S.frame;
+        graph.setCursor(timeOf(S.frame));
     }
 
     // ===================== コマ数 N =====================
@@ -861,10 +863,47 @@ document.addEventListener('DOMContentLoaded', () => {
         renderTable();
         renderOverlay();
         renderCalib();
+        renderGraph();
         updateReadout();
         setStatus();
         el.undoBtn.disabled = S.undo.length === 0;
     }
+
+    // ===================== グラフ =====================
+    const GRAPH_KINDS = ['x', 'y'];
+    const graph = createGraph($('graph'), f => {
+        if (!S.loaded) return;
+        if (S.mode === 'remeasure') { toast('再計測中はグラフから移動できません'); return; }
+        gotoFrame(f);
+    });
+    const graphButtons = [...$('graph-kinds').querySelectorAll('button')];
+
+    function renderGraph() {
+        const k = S.graphKind;
+        const series = [];
+        for (let id = 1; id <= S.objectCount; id++) {
+            const pts = [...S.points.values()].filter(p => p.id === id).sort((a, b) => a.f - b.f);
+            series.push({
+                color: COLORS[id - 1],
+                label: `物体${id}`,
+                points: pts.map(p => ({ f: p.f, t: timeOf(p.f), v: toPhys(p)[k] })),
+            });
+        }
+        graphButtons.forEach(b => b.classList.toggle('active', b.dataset.kind === k));
+        graph.render({
+            series,
+            xLabel: 't (s)',
+            yLabel: `${k} (${unit()})`,
+            cursor: S.loaded ? timeOf(S.frame) : null,
+            empty: 'まだ記録がありません',
+        });
+    }
+
+    graphButtons.forEach(b => b.addEventListener('click', () => {
+        S.graphKind = b.dataset.kind;
+        renderGraph();
+        save();
+    }));
 
     // ===================== CSV =====================
     // 速度は中心差分 v_i = (x_{i+1} - x_{i-1}) / (t_{i+1} - t_{i-1})。両端は空欄。
@@ -934,7 +973,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     v: 2, savedAt: Date.now(),
                     points: [...S.points.values()],
                     origin: S.origin, scale: S.scale,
-                    objectCount: S.objectCount, interval: S.interval, tZero: S.tZero, showVelocity: S.showVelocity,
+                    objectCount: S.objectCount, interval: S.interval, tZero: S.tZero, showVelocity: S.showVelocity, graphKind: S.graphKind,
                     fps: S.fps, vw: S.vw, vh: S.vh,
                 };
                 localStorage.setItem(STORE_PREFIX + S.fileKey, JSON.stringify(data));
@@ -973,6 +1012,7 @@ document.addEventListener('DOMContentLoaded', () => {
         el.objectCount.value = S.objectCount;
         S.tZero = !!d.tZero; el.tzeroCheck.checked = S.tZero;
         S.showVelocity = !!d.showVelocity; el.velocityCheck.checked = S.showVelocity;
+        S.graphKind = GRAPH_KINDS.includes(d.graphKind) ? d.graphKind : 'x';
         if (d.fps && Math.abs(d.fps - S.fps) > 1e-6) {
             S.fps = d.fps; el.fpsInput.value = roundFps(S.fps);
             el.fpsSource.textContent = '（手動設定・復元）';
