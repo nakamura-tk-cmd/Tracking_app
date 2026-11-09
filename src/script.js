@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     'use strict';
 
     // ===================== 定数 =====================
-    const APP_VERSION = '2.1.5';   // index.html の ?v= と合わせる
+    const APP_VERSION = '2.1.6';   // index.html の ?v= と合わせる
     const COLORS = ['#e8445a', '#2f8fe0', '#e0a400', '#1fa89a'];
     const DEFAULT_FPS = 30;
     const LOAD_TIMEOUT = 30000;  // これ以上進まなければ読み込みが止まったとみなす（ミリ秒）
