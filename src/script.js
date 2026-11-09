@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     'use strict';
 
     // ===================== 定数 =====================
-    const APP_VERSION = '2.1.4';   // index.html の ?v= と合わせる
+    const APP_VERSION = '2.1.5';   // index.html の ?v= と合わせる
     const COLORS = ['#e8445a', '#2f8fe0', '#e0a400', '#1fa89a'];
     const DEFAULT_FPS = 30;
     const LOAD_TIMEOUT = 30000;  // これ以上進まなければ読み込みが止まったとみなす（ミリ秒）
@@ -97,7 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function setStatus() {
         let text = '', cancel = false, cls = '';
-        if (!S.loaded) text = S.loadError || '動画を選んでください';
+        if (!S.loaded) { text = S.loadError || '動画を選んでください'; if (S.loadError) cls = 'error'; }
         else if (S.mode === 'origin') { text = '原点にしたい点をタップしてください'; cancel = true; cls = 'mode'; }
         else if (S.mode === 'scale') {
             text = S.scaleTmp.length === 0 ? 'スケール: 長さがわかっている物体の「始点」をタップ' : 'スケール: 次に「終点」をタップ';
