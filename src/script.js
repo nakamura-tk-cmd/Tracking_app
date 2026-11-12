@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     'use strict';
 
     // ===================== 定数 =====================
-    const APP_VERSION = '2.1.7';   // index.html の ?v= と合わせる
+    const APP_VERSION = '2.1.8';   // index.html の ?v= と合わせる
     const COLORS = ['#e8445a', '#2f8fe0', '#e0a400', '#1fa89a'];
     const DEFAULT_FPS = 30;
     const LOAD_TIMEOUT = 30000;  // これ以上進まなければ読み込みが止まったとみなす（ミリ秒）
@@ -782,10 +782,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
             // 現在のコマで記録済みの点は○で囲む
-            // 「点を小さく表示」のときは細い○にし，拡大するほど（1.5〜4倍）大きくして点と重ならないようにする
+            // 「点を小さく表示」のときは細い○にし，拡大するほど大きくして点と重ならないようにする
+            // 画面上の半径: 拡大なし 6px → ×2 で 12px → ×3 で 24px → ×5 以上で 48px
             const cur = S.points.get(key(S.frame, id));
             if (cur && S.smallMarks) {
-                g.appendChild(svg('circle', { cx: cur.x, cy: cur.y, r: Rcur * Math.min(Math.max(S.view.s, 1.5), 4), fill: 'none', stroke: color, 'stroke-width': 1.5, ...NS }));
+                const ringPx = Math.min(48, Math.max(6, 12 * S.view.s - 12));
+                g.appendChild(svg('circle', { cx: cur.x, cy: cur.y, r: ringPx * k, fill: 'none', stroke: color, 'stroke-width': 1.5, ...NS }));
                 g.appendChild(svg('circle', { cx: cur.x, cy: cur.y, r: R, fill: color, stroke: '#fff', 'stroke-width': 0.5, ...NS }));
             } else if (cur) {
                 g.appendChild(svg('circle', { cx: cur.x, cy: cur.y, r: Rcur, fill: 'none', stroke: color, 'stroke-width': 3, ...NS }));
