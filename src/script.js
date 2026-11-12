@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     'use strict';
 
     // ===================== 定数 =====================
-    const APP_VERSION = '2.1.6';   // index.html の ?v= と合わせる
+    const APP_VERSION = '2.1.7';   // index.html の ?v= と合わせる
     const COLORS = ['#e8445a', '#2f8fe0', '#e0a400', '#1fa89a'];
     const DEFAULT_FPS = 30;
     const LOAD_TIMEOUT = 30000;  // これ以上進まなければ読み込みが止まったとみなす（ミリ秒）
@@ -78,7 +78,7 @@ document.addEventListener('DOMContentLoaded', () => {
         undo: [],
         view: { s: 1, tx: 0, ty: 0 },
         disp: { w: 0, h: 0 },
-        showTrail: true, tZero: false, showVelocity: false,
+        showTrail: true, smallMarks: false, tZero: false, showVelocity: false,
         graphKind: 'x',           // GRAPH_KINDS のどれか
         graphLines: false,        // グラフの隣り合う点を線で結ぶ
         lastMediaTime: null,
@@ -740,7 +740,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 画面上で一定の大きさに見えるよう，動画ピクセル単位に換算
         const k = S.vw / (S.disp.w * S.view.s);
-        const R = 4.5 * k, Rcur = 9 * k;
+        const m = S.smallMarks ? 0.45 : 1;   // 「点を小さく表示」のときの縮小率
+        const R = 4.5 * k * m, Rcur = 9 * k * m;
         const NS = { 'vector-effect': 'non-scaling-stroke' };
 
         // 座標軸
@@ -772,17 +773,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (pts.length > 1) {
                     g.appendChild(svg('polyline', {
                         points: pts.map(p => `${p.x},${p.y}`).join(' '),
-                        fill: 'none', stroke: color, 'stroke-width': 1.5, 'stroke-opacity': 0.7, ...NS,
+                        fill: 'none', stroke: color, 'stroke-width': S.smallMarks ? 1 : 1.5, 'stroke-opacity': 0.7, ...NS,
                     }));
                 }
                 pts.forEach(p => {
                     if (p.f === S.frame) return;
-                    g.appendChild(svg('circle', { cx: p.x, cy: p.y, r: R, fill: color, 'fill-opacity': 0.85, stroke: '#fff', 'stroke-width': 1, ...NS }));
+                    g.appendChild(svg('circle', { cx: p.x, cy: p.y, r: R, fill: color, 'fill-opacity': 0.85, stroke: '#fff', 'stroke-width': S.smallMarks ? 0.5 : 1, ...NS }));
                 });
             }
-            // 現在のコマで記録済みの点は大きく表示
+            // 現在のコマで記録済みの点は○で囲む
+            // 「点を小さく表示」のときは細い○にし，拡大するほど（1.5〜4倍）大きくして点と重ならないようにする
             const cur = S.points.get(key(S.frame, id));
-            if (cur) {
+            if (cur && S.smallMarks) {
+                g.appendChild(svg('circle', { cx: cur.x, cy: cur.y, r: Rcur * Math.min(Math.max(S.view.s, 1.5), 4), fill: 'none', stroke: color, 'stroke-width': 1.5, ...NS }));
+                g.appendChild(svg('circle', { cx: cur.x, cy: cur.y, r: R, fill: color, stroke: '#fff', 'stroke-width': 0.5, ...NS }));
+            } else if (cur) {
                 g.appendChild(svg('circle', { cx: cur.x, cy: cur.y, r: Rcur, fill: 'none', stroke: color, 'stroke-width': 3, ...NS }));
                 g.appendChild(svg('circle', { cx: cur.x, cy: cur.y, r: R * 0.6, fill: color }));
             }
@@ -796,6 +801,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     el.trailCheck.addEventListener('change', () => { S.showTrail = el.trailCheck.checked; renderOverlay(); });
+    $('small-marks-check').addEventListener('change', e => { S.smallMarks = e.target.checked; renderOverlay(); });
 
     // ===================== 表 =====================
     function frameRows() {

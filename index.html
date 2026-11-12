@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <title>動画解析ツール（手動）</title>
-    <link rel="stylesheet" href="css/style.css?v=2.1.6">
+    <link rel="stylesheet" href="css/style.css?v=2.1.7">
 </head>
 <body>
 
 <header class="app-header">
     <h1>動画解析ツール（手動）</h1>
-    <span class="version" id="app-version">v2.1.6</span>
+    <span class="version" id="app-version">v2.1.7</span>
 </header>
 
 <main>
@@ -75,6 +75,7 @@
                 <button id="scale-btn">📏 スケール</button>
                 <button id="fit-btn">⤢ 全体表示</button>
                 <label class="check"><input type="checkbox" id="trail-check" checked> 軌跡を表示</label>
+                <label class="check"><input type="checkbox" id="small-marks-check"> 点を小さく表示</label>
             </div>
 
             <div id="status-bar" class="status-bar">
@@ -202,8 +203,8 @@
 </main>
 
 <!-- 更新して公開するたびに ?v= の番号と，script.js の APP_VERSION を上げる（ブラウザに古いファイルが残るのを防ぐ） -->
-<script src="src/mp4info.js?v=2.1.6"></script>
-<script src="src/graph.js?v=2.1.6"></script>
-<script src="src/script.js?v=2.1.6"></script>
+<script src="src/mp4info.js?v=2.1.7"></script>
+<script src="src/graph.js?v=2.1.7"></script>
+<script src="src/script.js?v=2.1.7"></script>
 </body>
 </html>
